@@ -1,0 +1,46 @@
+##############################################################################
+#  V001 — Create ROLES table
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V001-create-roles
+      author: aaseya
+      changes:
+
+        # ── Sequence ─────────────────────────────────────────────────────────
+        - createSequence:
+            sequenceName: roles_role_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        # ── Table ────────────────────────────────────────────────────────────
+        - createTable:
+            tableName: roles
+            remarks: "Groups users by their permission level within the inspection system"
+            columns:
+
+              - column:
+                  name: role_id
+                  type: BIGINT
+                  defaultValueSequenceNext: roles_role_id_seq
+                  remarks: "Primary key"
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_roles
+                    nullable: false
+
+              - column:
+                  name: role_name
+                  type: VARCHAR(100)
+                  remarks: "Unique human-readable role label, e.g. ADMIN, INSPECTOR"
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_roles_role_name
+
+      rollback:
+        - dropTable:
+            tableName: roles
+        - dropSequence:
+            sequenceName: roles_role_id_seq

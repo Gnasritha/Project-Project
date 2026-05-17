@@ -1,0 +1,76 @@
+##############################################################################
+#  V011 — Create USER_INSPECTION_TYPE mapping table
+#  Maps each inspector (User) to the Inspection Types they are authorised
+#  to conduct. Only these types are shown in the mobile app "Select control
+#  type" sheet.
+#  Depends on: V004 (users), V002 (inspection_type)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V011-create-user-inspection-type
+      author: aaseya
+      changes:
+
+        - createTable:
+            tableName: user_inspection_type
+            remarks: "Many-to-many: maps inspectors to their authorised inspection types"
+            columns:
+
+              - column:
+                  name: user_id
+                  type: BIGINT
+                  remarks: "FK → users.user_id"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: inspection_type_id
+                  type: BIGINT
+                  remarks: "FK → inspection_type.inspection_type_id"
+                  constraints:
+                    nullable: false
+
+        # ── Composite primary key ─────────────────────────────────────────
+        - addPrimaryKey:
+            tableName: user_inspection_type
+            columnNames: user_id, inspection_type_id
+            constraintName: pk_user_inspection_type
+
+        # ── Foreign keys ──────────────────────────────────────────────────
+        - addForeignKeyConstraint:
+            baseTableName: user_inspection_type
+            baseColumnNames: user_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_uit_user
+            onDelete: CASCADE
+            onUpdate: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: user_inspection_type
+            baseColumnNames: inspection_type_id
+            referencedTableName: inspection_type
+            referencedColumnNames: inspection_type_id
+            constraintName: fk_uit_inspection_type
+            onDelete: CASCADE
+            onUpdate: CASCADE
+
+        # ── Indexes ───────────────────────────────────────────────────────
+        - createIndex:
+            tableName: user_inspection_type
+            indexName: idx_uit_user_id
+            columns:
+              - column:
+                  name: user_id
+
+        - createIndex:
+            tableName: user_inspection_type
+            indexName: idx_uit_inspection_type_id
+            columns:
+              - column:
+                  name: inspection_type_id
+
+      rollback:
+        - dropTable:
+            tableName: user_inspection_type

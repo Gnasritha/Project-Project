@@ -1,0 +1,51 @@
+##############################################################################
+#  V015 — Link ESTABLISHMENT to ISIC_ACTIVITY (parent + detail)
+#  Captures the ISIC + Detail Activity selected on the no-license
+#  Facility-status screen (ISM-4).
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V015-add-isic-fk-to-establishment
+      author: aaseya
+      changes:
+
+        - addColumn:
+            tableName: establishment
+            columns:
+              - column:
+                  name: isic_id
+                  type: BIGINT
+                  remarks: "Top-level ISIC category (FK → isic_activity.isic_id)"
+              - column:
+                  name: isic_detail_id
+                  type: BIGINT
+                  remarks: "Detail activity under the ISIC category (FK → isic_activity.isic_id)"
+              - column:
+                  name: license_available
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  remarks: "false when created via the no-license map flow"
+
+        - addForeignKeyConstraint:
+            baseTableName: establishment
+            baseColumnNames: isic_id
+            referencedTableName: isic_activity
+            referencedColumnNames: isic_id
+            constraintName: fk_establishment_isic
+            onDelete: SET NULL
+            onUpdate: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: establishment
+            baseColumnNames: isic_detail_id
+            referencedTableName: isic_activity
+            referencedColumnNames: isic_id
+            constraintName: fk_establishment_isic_detail
+            onDelete: SET NULL
+            onUpdate: CASCADE
+
+      rollback:
+        - dropColumn: { tableName: establishment, columnName: license_available }
+        - dropColumn: { tableName: establishment, columnName: isic_detail_id }
+        - dropColumn: { tableName: establishment, columnName: isic_id }

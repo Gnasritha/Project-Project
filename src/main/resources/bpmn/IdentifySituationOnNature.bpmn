@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  id="Definitions_IdentifySituation"
+                  targetNamespace="http://aaseya.com/bpmn/momthathel"
+                  modeler:executionPlatform="Camunda Cloud"
+                  modeler:executionPlatformVersion="8.9.0">
+
+  <bpmn:process id="IdentifySituationOnNature" name="Identify Situation On Nature" isExecutable="true">
+
+    <bpmn:startEvent id="StartEvent_ISN" name="Start">
+      <bpmn:outgoing>Flow_ISN_Start_to_Identify</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_IdentifySituationOnNature" name="Identify Situation On Nature">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="identify-situation-on-nature"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ISN_Start_to_Identify</bpmn:incoming>
+      <bpmn:outgoing>Flow_Identify_to_Decision</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_EstablishmentDecision" name="Establishment Open?">
+      <bpmn:incoming>Flow_Identify_to_Decision</bpmn:incoming>
+      <bpmn:outgoing>Flow_Estab_Open</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Estab_Else</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ChangeToSpecificStage" name="Change To Specific Stage">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="change-to-specific-stage"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Estab_Else</bpmn:incoming>
+      <bpmn:outgoing>Flow_Change_to_CheckNewENF</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_CheckIfNewENFFollowed" name="New ENF Process Followed?">
+      <bpmn:incoming>Flow_Change_to_CheckNewENF</bpmn:incoming>
+      <bpmn:outgoing>Flow_NewENF_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_NewENF_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_UpdationsToEstTable" name="Updations To Est Table">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="updations-to-est-table"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_NewENF_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_UpdateEst_to_CaseExceeded</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_CaseExceededSendSMS" name="Case exceeded after sending SMS?">
+      <bpmn:incoming>Flow_UpdateEst_to_CaseExceeded</bpmn:incoming>
+      <bpmn:outgoing>Flow_Exceeded_True</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Exceeded_Else</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_IsLicenseCancelled" name="Is License Cancelled?">
+      <bpmn:incoming>Flow_Exceeded_True</bpmn:incoming>
+      <bpmn:outgoing>Flow_LicenseCancelled_True</bpmn:outgoing>
+      <bpmn:outgoing>Flow_LicenseCancelled_False</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ResolveEstablishmentNotFound" name="Resolve Establishment Not Found">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="resolve-establishment-not-found"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_LicenseCancelled_True</bpmn:incoming>
+      <bpmn:outgoing>Flow_Resolve_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_SetNewViolationInfo" name="Set New Violation Info">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="set-new-violation-info"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_LicenseCancelled_False</bpmn:incoming>
+      <bpmn:outgoing>Flow_SetViolation_to_ChangeStage</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ChangeToSpecificStage2" name="Change to Specific Stage (Violation)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="change-to-specific-stage"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_SetViolation_to_ChangeStage</bpmn:incoming>
+      <bpmn:outgoing>Flow_ChangeStage2_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_EstablishmentClosedNotFoundIMG" name="Establishment Closed / Not Found Image">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="establishment-closed-not-found-img"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Exceeded_Else</bpmn:incoming>
+      <bpmn:outgoing>Flow_ClosedImg_to_SendSMS</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_SendSMSToOwnerID" name="Send SMS to Owner ID">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="send-sms-to-owner-id"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ClosedImg_to_SendSMS</bpmn:incoming>
+      <bpmn:outgoing>Flow_SendSMS_to_Resolve</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_ResolveEstablishmentNotFound2" name="Resolve Establishment Not Found (SMS)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="resolve-establishment-not-found"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_SendSMS_to_Resolve</bpmn:incoming>
+      <bpmn:outgoing>Flow_Resolve2_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_ISN_Open" name="Establishment Open">
+      <bpmn:incoming>Flow_Estab_Open</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:endEvent id="EndEvent_ISN_Closed" name="Establishment Closed / Resolved">
+      <bpmn:incoming>Flow_Resolve_to_End</bpmn:incoming>
+      <bpmn:incoming>Flow_Resolve2_to_End</bpmn:incoming>
+      <bpmn:incoming>Flow_ChangeStage2_to_End</bpmn:incoming>
+      <bpmn:incoming>Flow_NewENF_No</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence flows -->
+    <bpmn:sequenceFlow id="Flow_ISN_Start_to_Identify" sourceRef="StartEvent_ISN" targetRef="Task_IdentifySituationOnNature"/>
+    <bpmn:sequenceFlow id="Flow_Identify_to_Decision" sourceRef="Task_IdentifySituationOnNature" targetRef="Gateway_EstablishmentDecision"/>
+
+    <bpmn:sequenceFlow id="Flow_Estab_Open" name="Est Open" sourceRef="Gateway_EstablishmentDecision" targetRef="EndEvent_ISN_Open">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isEstablishmentOpen = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Estab_Else" name="Else" sourceRef="Gateway_EstablishmentDecision" targetRef="Task_ChangeToSpecificStage">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isEstablishmentOpen != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_Change_to_CheckNewENF" sourceRef="Task_ChangeToSpecificStage" targetRef="Gateway_CheckIfNewENFFollowed"/>
+
+    <bpmn:sequenceFlow id="Flow_NewENF_Yes" name="Yes" sourceRef="Gateway_CheckIfNewENFFollowed" targetRef="Task_UpdationsToEstTable">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isNewENFProcessFollowed = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_NewENF_No" name="No" sourceRef="Gateway_CheckIfNewENFFollowed" targetRef="EndEvent_ISN_Closed">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isNewENFProcessFollowed != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_UpdateEst_to_CaseExceeded" sourceRef="Task_UpdationsToEstTable" targetRef="Gateway_CaseExceededSendSMS"/>
+
+    <bpmn:sequenceFlow id="Flow_Exceeded_True" name="True" sourceRef="Gateway_CaseExceededSendSMS" targetRef="Gateway_IsLicenseCancelled">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=caseExceededAfterSMS = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Exceeded_Else" name="Else" sourceRef="Gateway_CaseExceededSendSMS" targetRef="Task_EstablishmentClosedNotFoundIMG">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=caseExceededAfterSMS != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_LicenseCancelled_True" name="True" sourceRef="Gateway_IsLicenseCancelled" targetRef="Task_ResolveEstablishmentNotFound">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isLicenseCancelled = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_LicenseCancelled_False" name="False" sourceRef="Gateway_IsLicenseCancelled" targetRef="Task_SetNewViolationInfo">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isLicenseCancelled != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_Resolve_to_End" sourceRef="Task_ResolveEstablishmentNotFound" targetRef="EndEvent_ISN_Closed"/>
+    <bpmn:sequenceFlow id="Flow_SetViolation_to_ChangeStage" sourceRef="Task_SetNewViolationInfo" targetRef="Task_ChangeToSpecificStage2"/>
+    <bpmn:sequenceFlow id="Flow_ChangeStage2_to_End" sourceRef="Task_ChangeToSpecificStage2" targetRef="EndEvent_ISN_Closed"/>
+
+    <bpmn:sequenceFlow id="Flow_ClosedImg_to_SendSMS" sourceRef="Task_EstablishmentClosedNotFoundIMG" targetRef="Task_SendSMSToOwnerID"/>
+    <bpmn:sequenceFlow id="Flow_SendSMS_to_Resolve" sourceRef="Task_SendSMSToOwnerID" targetRef="Task_ResolveEstablishmentNotFound2"/>
+    <bpmn:sequenceFlow id="Flow_Resolve2_to_End" sourceRef="Task_ResolveEstablishmentNotFound2" targetRef="EndEvent_ISN_Closed"/>
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                      xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                      xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                      id="BPMNDiagram_ISN">
+    <bpmndi:BPMNPlane id="BPMNPlane_ISN" bpmnElement="IdentifySituationOnNature">
+
+      <bpmndi:BPMNShape id="StartEvent_ISN_di" bpmnElement="StartEvent_ISN">
+        <dc:Bounds x="160" y="192" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_IdentifySituationOnNature_di" bpmnElement="Task_IdentifySituationOnNature">
+        <dc:Bounds x="240" y="170" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_EstablishmentDecision_di" bpmnElement="Gateway_EstablishmentDecision" isMarkerVisible="true">
+        <dc:Bounds x="400" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ISN_Open_di" bpmnElement="EndEvent_ISN_Open">
+        <dc:Bounds x="500" y="42" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ChangeToSpecificStage_di" bpmnElement="Task_ChangeToSpecificStage">
+        <dc:Bounds x="500" y="170" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CheckIfNewENFFollowed_di" bpmnElement="Gateway_CheckIfNewENFFollowed" isMarkerVisible="true">
+        <dc:Bounds x="660" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdationsToEstTable_di" bpmnElement="Task_UpdationsToEstTable">
+        <dc:Bounds x="760" y="170" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CaseExceededSendSMS_di" bpmnElement="Gateway_CaseExceededSendSMS" isMarkerVisible="true">
+        <dc:Bounds x="920" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsLicenseCancelled_di" bpmnElement="Gateway_IsLicenseCancelled" isMarkerVisible="true">
+        <dc:Bounds x="1030" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ResolveEstablishmentNotFound_di" bpmnElement="Task_ResolveEstablishmentNotFound">
+        <dc:Bounds x="1130" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SetNewViolationInfo_di" bpmnElement="Task_SetNewViolationInfo">
+        <dc:Bounds x="1130" y="300" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ChangeToSpecificStage2_di" bpmnElement="Task_ChangeToSpecificStage2">
+        <dc:Bounds x="1280" y="300" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_EstablishmentClosedNotFoundIMG_di" bpmnElement="Task_EstablishmentClosedNotFoundIMG">
+        <dc:Bounds x="1030" y="430" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SendSMSToOwnerID_di" bpmnElement="Task_SendSMSToOwnerID">
+        <dc:Bounds x="1190" y="430" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ResolveEstablishmentNotFound2_di" bpmnElement="Task_ResolveEstablishmentNotFound2">
+        <dc:Bounds x="1350" y="430" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_ISN_Closed_di" bpmnElement="EndEvent_ISN_Closed">
+        <dc:Bounds x="1520" y="192" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_ISN_Start_to_Identify_di" bpmnElement="Flow_ISN_Start_to_Identify">
+        <di:waypoint x="196" y="210"/>
+        <di:waypoint x="240" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Identify_to_Decision_di" bpmnElement="Flow_Identify_to_Decision">
+        <di:waypoint x="340" y="210"/>
+        <di:waypoint x="400" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Estab_Open_di" bpmnElement="Flow_Estab_Open">
+        <di:waypoint x="425" y="185"/>
+        <di:waypoint x="425" y="60"/>
+        <di:waypoint x="500" y="60"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Estab_Else_di" bpmnElement="Flow_Estab_Else">
+        <di:waypoint x="450" y="210"/>
+        <di:waypoint x="500" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Change_to_CheckNewENF_di" bpmnElement="Flow_Change_to_CheckNewENF">
+        <di:waypoint x="600" y="210"/>
+        <di:waypoint x="660" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NewENF_Yes_di" bpmnElement="Flow_NewENF_Yes">
+        <di:waypoint x="710" y="210"/>
+        <di:waypoint x="760" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NewENF_No_di" bpmnElement="Flow_NewENF_No">
+        <di:waypoint x="685" y="235"/>
+        <di:waypoint x="685" y="570"/>
+        <di:waypoint x="1538" y="570"/>
+        <di:waypoint x="1538" y="228"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UpdateEst_to_CaseExceeded_di" bpmnElement="Flow_UpdateEst_to_CaseExceeded">
+        <di:waypoint x="860" y="210"/>
+        <di:waypoint x="920" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Exceeded_True_di" bpmnElement="Flow_Exceeded_True">
+        <di:waypoint x="970" y="210"/>
+        <di:waypoint x="1030" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Exceeded_Else_di" bpmnElement="Flow_Exceeded_Else">
+        <di:waypoint x="945" y="235"/>
+        <di:waypoint x="945" y="470"/>
+        <di:waypoint x="1030" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LicenseCancelled_True_di" bpmnElement="Flow_LicenseCancelled_True">
+        <di:waypoint x="1055" y="185"/>
+        <di:waypoint x="1055" y="80"/>
+        <di:waypoint x="1130" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_LicenseCancelled_False_di" bpmnElement="Flow_LicenseCancelled_False">
+        <di:waypoint x="1055" y="235"/>
+        <di:waypoint x="1055" y="340"/>
+        <di:waypoint x="1130" y="340"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Resolve_to_End_di" bpmnElement="Flow_Resolve_to_End">
+        <di:waypoint x="1230" y="80"/>
+        <di:waypoint x="1538" y="80"/>
+        <di:waypoint x="1538" y="192"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SetViolation_to_ChangeStage_di" bpmnElement="Flow_SetViolation_to_ChangeStage">
+        <di:waypoint x="1230" y="340"/>
+        <di:waypoint x="1280" y="340"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ChangeStage2_to_End_di" bpmnElement="Flow_ChangeStage2_to_End">
+        <di:waypoint x="1380" y="340"/>
+        <di:waypoint x="1538" y="340"/>
+        <di:waypoint x="1538" y="228"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ClosedImg_to_SendSMS_di" bpmnElement="Flow_ClosedImg_to_SendSMS">
+        <di:waypoint x="1130" y="470"/>
+        <di:waypoint x="1190" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SendSMS_to_Resolve_di" bpmnElement="Flow_SendSMS_to_Resolve">
+        <di:waypoint x="1290" y="470"/>
+        <di:waypoint x="1350" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Resolve2_to_End_di" bpmnElement="Flow_Resolve2_to_End">
+        <di:waypoint x="1450" y="470"/>
+        <di:waypoint x="1538" y="470"/>
+        <di:waypoint x="1538" y="228"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

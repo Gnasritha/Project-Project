@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  id="Definitions_EnterAndValidateClauses"
+                  targetNamespace="http://aaseya.com/bpmn/momthathel"
+                  modeler:executionPlatform="Camunda Cloud"
+                  modeler:executionPlatformVersion="8.9.0">
+
+  <bpmn:process id="EnterAndValidateClauses" name="Enter and Validate Clauses" isExecutable="true">
+
+    <bpmn:startEvent id="StartEvent_EVC" name="Start">
+      <bpmn:outgoing>Flow_EVC_Start_to_UpdateStatus</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_UpdateStatusVisit" name="Update Status Visit On Start Inspection">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-status-visit-on-start"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_EVC_Start_to_UpdateStatus</bpmn:incoming>
+      <bpmn:outgoing>Flow_UpdateStatus_to_HealthCheck</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_HealthOrMarketInspection" name="Health / Market Inspection?">
+      <bpmn:incoming>Flow_UpdateStatus_to_HealthCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_Health_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Health_Else</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="UserTask_HealthCertificateDetails" name="Health Certificate Details">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=inspectorUsername"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Health_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_HealthCert_to_IsSupporting</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="Gateway_IsSupportingObserver" name="Supporting Observer?">
+      <bpmn:incoming>Flow_HealthCert_to_IsSupporting</bpmn:incoming>
+      <bpmn:incoming>Flow_Health_Else</bpmn:incoming>
+      <bpmn:outgoing>Flow_Supporting_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Supporting_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_ObserverHasAssociation" name="Observer has association?">
+      <bpmn:incoming>Flow_Supporting_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ObserverAssoc_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ObserverAssoc_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="UserTask_ObserverAssociationImage" name="Observer Association Image">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=inspectorUsername"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ObserverAssoc_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ObserverImage_to_SubclauseCheck</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_ResolveNoAssociation" name="Resolved Inspection Type Association">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="resolve-no-association"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ObserverAssoc_No</bpmn:incoming>
+      <bpmn:incoming>Flow_Supporting_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_ResolveAssoc_to_SubclauseCheck</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_SubclauseExists" name="Subclauses exist?">
+      <bpmn:incoming>Flow_ObserverImage_to_SubclauseCheck</bpmn:incoming>
+      <bpmn:incoming>Flow_ResolveAssoc_to_SubclauseCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_Subclause_Exists</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Subclause_NoSub</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="UserTask_ValidateClauseAndSubclause" name="Validate Clause And Subclause">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=inspectorUsername"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Subclause_Exists</bpmn:incoming>
+      <bpmn:outgoing>Flow_ValidateSub_to_VerifySub</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_NoSubclausesToValidate" name="No Subclauses To Validate">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="no-subclauses-to-validate"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Subclause_NoSub</bpmn:incoming>
+      <bpmn:outgoing>Flow_NoSub_to_VerifySub</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_VerifyingSubclauses" name="Verifying Subclauses">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="verifying-subclauses"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ValidateSub_to_VerifySub</bpmn:incoming>
+      <bpmn:incoming>Flow_NoSub_to_VerifySub</bpmn:incoming>
+      <bpmn:outgoing>Flow_VerifySub_to_GeneralViol</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_HasGeneralViolations" name="Has General Violations?">
+      <bpmn:incoming>Flow_VerifySub_to_GeneralViol</bpmn:incoming>
+      <bpmn:outgoing>Flow_GeneralViol_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_GeneralViol_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="UserTask_GeneralViolations" name="General Violations">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=inspectorUsername"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_GeneralViol_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_GeneralViol_to_Calculate</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_CalculateComplianceScore" name="Calculate Compliance Score">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="calculate-compliance-score"/>
+        <zeebe:ioMapping>
+          <zeebe:output source="=hasFailedClauses" target="hasFailedClauses"/>
+          <zeebe:output source="=complianceScore" target="complianceScore"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_GeneralViol_to_Calculate</bpmn:incoming>
+      <bpmn:incoming>Flow_GeneralViol_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Calculate_to_HasFailed</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_HasFailedClauses_EVC" name="Has Failed Clauses?">
+      <bpmn:incoming>Flow_Calculate_to_HasFailed</bpmn:incoming>
+      <bpmn:outgoing>Flow_HasFailed_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_HasFailed_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="UserTask_DisplayFailedSubclauses" name="Display Failed Subclauses">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=inspectorUsername"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_HasFailed_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_DisplayFailed_to_End</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:serviceTask id="Task_NoFailedClauses" name="No Failed Clauses">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="no-failed-clauses"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_HasFailed_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_NoFailed_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_EVC" name="Clauses Validated">
+      <bpmn:incoming>Flow_DisplayFailed_to_End</bpmn:incoming>
+      <bpmn:incoming>Flow_NoFailed_to_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence flows -->
+    <bpmn:sequenceFlow id="Flow_EVC_Start_to_UpdateStatus" sourceRef="StartEvent_EVC" targetRef="Task_UpdateStatusVisit"/>
+    <bpmn:sequenceFlow id="Flow_UpdateStatus_to_HealthCheck" sourceRef="Task_UpdateStatusVisit" targetRef="Gateway_HealthOrMarketInspection"/>
+
+    <bpmn:sequenceFlow id="Flow_Health_Yes" name="HealthOR Market" sourceRef="Gateway_HealthOrMarketInspection" targetRef="UserTask_HealthCertificateDetails">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isHealthOrMarketInspection = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Health_Else" name="Else" sourceRef="Gateway_HealthOrMarketInspection" targetRef="Gateway_IsSupportingObserver">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isHealthOrMarketInspection != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_HealthCert_to_IsSupporting" sourceRef="UserTask_HealthCertificateDetails" targetRef="Gateway_IsSupportingObserver"/>
+
+    <bpmn:sequenceFlow id="Flow_Supporting_Yes" name="Yes" sourceRef="Gateway_IsSupportingObserver" targetRef="Gateway_ObserverHasAssociation">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasSupportingObserver = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Supporting_No" name="No" sourceRef="Gateway_IsSupportingObserver" targetRef="Task_ResolveNoAssociation">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasSupportingObserver != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_ObserverAssoc_Yes" name="Has Association" sourceRef="Gateway_ObserverHasAssociation" targetRef="UserTask_ObserverAssociationImage">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=observerHasAssociation = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ObserverAssoc_No" name="No Association" sourceRef="Gateway_ObserverHasAssociation" targetRef="Task_ResolveNoAssociation">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=observerHasAssociation != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_ObserverImage_to_SubclauseCheck" sourceRef="UserTask_ObserverAssociationImage" targetRef="Gateway_SubclauseExists"/>
+    <bpmn:sequenceFlow id="Flow_ResolveAssoc_to_SubclauseCheck" sourceRef="Task_ResolveNoAssociation" targetRef="Gateway_SubclauseExists"/>
+
+    <bpmn:sequenceFlow id="Flow_Subclause_Exists" name="Exists" sourceRef="Gateway_SubclauseExists" targetRef="UserTask_ValidateClauseAndSubclause">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasSubclauses = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Subclause_NoSub" name="No Sub" sourceRef="Gateway_SubclauseExists" targetRef="Task_NoSubclausesToValidate">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasSubclauses != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_ValidateSub_to_VerifySub" sourceRef="UserTask_ValidateClauseAndSubclause" targetRef="Task_VerifyingSubclauses"/>
+    <bpmn:sequenceFlow id="Flow_NoSub_to_VerifySub" sourceRef="Task_NoSubclausesToValidate" targetRef="Task_VerifyingSubclauses"/>
+    <bpmn:sequenceFlow id="Flow_VerifySub_to_GeneralViol" sourceRef="Task_VerifyingSubclauses" targetRef="Gateway_HasGeneralViolations"/>
+
+    <bpmn:sequenceFlow id="Flow_GeneralViol_Yes" name="Has Violations" sourceRef="Gateway_HasGeneralViolations" targetRef="UserTask_GeneralViolations">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasGeneralViolations = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_GeneralViol_No" name="None" sourceRef="Gateway_HasGeneralViolations" targetRef="Task_CalculateComplianceScore">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasGeneralViolations != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_GeneralViol_to_Calculate" sourceRef="UserTask_GeneralViolations" targetRef="Task_CalculateComplianceScore"/>
+
+    <bpmn:sequenceFlow id="Flow_Calculate_to_HasFailed" sourceRef="Task_CalculateComplianceScore" targetRef="Gateway_HasFailedClauses_EVC"/>
+
+    <bpmn:sequenceFlow id="Flow_HasFailed_Yes" name="Failed" sourceRef="Gateway_HasFailedClauses_EVC" targetRef="UserTask_DisplayFailedSubclauses">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasFailedClauses = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HasFailed_No" name="No Failed" sourceRef="Gateway_HasFailedClauses_EVC" targetRef="Task_NoFailedClauses">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasFailedClauses != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_DisplayFailed_to_End" sourceRef="UserTask_DisplayFailedSubclauses" targetRef="EndEvent_EVC"/>
+    <bpmn:sequenceFlow id="Flow_NoFailed_to_End" sourceRef="Task_NoFailedClauses" targetRef="EndEvent_EVC"/>
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                      xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                      xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                      id="BPMNDiagram_EVC">
+    <bpmndi:BPMNPlane id="BPMNPlane_EVC" bpmnElement="EnterAndValidateClauses">
+
+      <bpmndi:BPMNShape id="StartEvent_EVC_di" bpmnElement="StartEvent_EVC">
+        <dc:Bounds x="160" y="192" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdateStatusVisit_di" bpmnElement="Task_UpdateStatusVisit">
+        <dc:Bounds x="240" y="170" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HealthOrMarketInspection_di" bpmnElement="Gateway_HealthOrMarketInspection" isMarkerVisible="true">
+        <dc:Bounds x="400" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_HealthCertificateDetails_di" bpmnElement="UserTask_HealthCertificateDetails">
+        <dc:Bounds x="500" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsSupportingObserver_di" bpmnElement="Gateway_IsSupportingObserver" isMarkerVisible="true">
+        <dc:Bounds x="670" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ObserverHasAssociation_di" bpmnElement="Gateway_ObserverHasAssociation" isMarkerVisible="true">
+        <dc:Bounds x="780" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_ObserverAssociationImage_di" bpmnElement="UserTask_ObserverAssociationImage">
+        <dc:Bounds x="880" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ResolveNoAssociation_di" bpmnElement="Task_ResolveNoAssociation">
+        <dc:Bounds x="880" y="330" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_SubclauseExists_di" bpmnElement="Gateway_SubclauseExists" isMarkerVisible="true">
+        <dc:Bounds x="1080" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_ValidateClauseAndSubclause_di" bpmnElement="UserTask_ValidateClauseAndSubclause">
+        <dc:Bounds x="1180" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NoSubclausesToValidate_di" bpmnElement="Task_NoSubclausesToValidate">
+        <dc:Bounds x="1180" y="330" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_VerifyingSubclauses_di" bpmnElement="Task_VerifyingSubclauses">
+        <dc:Bounds x="1380" y="170" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HasGeneralViolations_di" bpmnElement="Gateway_HasGeneralViolations" isMarkerVisible="true">
+        <dc:Bounds x="1540" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_GeneralViolations_di" bpmnElement="UserTask_GeneralViolations">
+        <dc:Bounds x="1640" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CalculateComplianceScore_di" bpmnElement="Task_CalculateComplianceScore">
+        <dc:Bounds x="1820" y="170" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HasFailedClauses_EVC_di" bpmnElement="Gateway_HasFailedClauses_EVC" isMarkerVisible="true">
+        <dc:Bounds x="1980" y="185" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_DisplayFailedSubclauses_di" bpmnElement="UserTask_DisplayFailedSubclauses">
+        <dc:Bounds x="2080" y="40" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_NoFailedClauses_di" bpmnElement="Task_NoFailedClauses">
+        <dc:Bounds x="2080" y="330" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_EVC_di" bpmnElement="EndEvent_EVC">
+        <dc:Bounds x="2260" y="192" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_EVC_Start_to_UpdateStatus_di" bpmnElement="Flow_EVC_Start_to_UpdateStatus">
+        <di:waypoint x="196" y="210"/>
+        <di:waypoint x="240" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UpdateStatus_to_HealthCheck_di" bpmnElement="Flow_UpdateStatus_to_HealthCheck">
+        <di:waypoint x="340" y="210"/>
+        <di:waypoint x="400" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Health_Yes_di" bpmnElement="Flow_Health_Yes">
+        <di:waypoint x="425" y="185"/>
+        <di:waypoint x="425" y="80"/>
+        <di:waypoint x="500" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Health_Else_di" bpmnElement="Flow_Health_Else">
+        <di:waypoint x="450" y="210"/>
+        <di:waypoint x="670" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HealthCert_to_IsSupporting_di" bpmnElement="Flow_HealthCert_to_IsSupporting">
+        <di:waypoint x="600" y="80"/>
+        <di:waypoint x="695" y="80"/>
+        <di:waypoint x="695" y="185"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Supporting_Yes_di" bpmnElement="Flow_Supporting_Yes">
+        <di:waypoint x="720" y="210"/>
+        <di:waypoint x="780" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Supporting_No_di" bpmnElement="Flow_Supporting_No">
+        <di:waypoint x="695" y="235"/>
+        <di:waypoint x="695" y="370"/>
+        <di:waypoint x="880" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ObserverAssoc_Yes_di" bpmnElement="Flow_ObserverAssoc_Yes">
+        <di:waypoint x="805" y="185"/>
+        <di:waypoint x="805" y="80"/>
+        <di:waypoint x="880" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ObserverAssoc_No_di" bpmnElement="Flow_ObserverAssoc_No">
+        <di:waypoint x="805" y="235"/>
+        <di:waypoint x="805" y="370"/>
+        <di:waypoint x="880" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ObserverImage_to_SubclauseCheck_di" bpmnElement="Flow_ObserverImage_to_SubclauseCheck">
+        <di:waypoint x="980" y="80"/>
+        <di:waypoint x="1105" y="80"/>
+        <di:waypoint x="1105" y="185"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ResolveAssoc_to_SubclauseCheck_di" bpmnElement="Flow_ResolveAssoc_to_SubclauseCheck">
+        <di:waypoint x="980" y="370"/>
+        <di:waypoint x="1105" y="370"/>
+        <di:waypoint x="1105" y="235"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Subclause_Exists_di" bpmnElement="Flow_Subclause_Exists">
+        <di:waypoint x="1105" y="185"/>
+        <di:waypoint x="1105" y="80"/>
+        <di:waypoint x="1180" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Subclause_NoSub_di" bpmnElement="Flow_Subclause_NoSub">
+        <di:waypoint x="1105" y="235"/>
+        <di:waypoint x="1105" y="370"/>
+        <di:waypoint x="1180" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ValidateSub_to_VerifySub_di" bpmnElement="Flow_ValidateSub_to_VerifySub">
+        <di:waypoint x="1280" y="80"/>
+        <di:waypoint x="1430" y="80"/>
+        <di:waypoint x="1430" y="170"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NoSub_to_VerifySub_di" bpmnElement="Flow_NoSub_to_VerifySub">
+        <di:waypoint x="1280" y="370"/>
+        <di:waypoint x="1430" y="370"/>
+        <di:waypoint x="1430" y="250"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_VerifySub_to_GeneralViol_di" bpmnElement="Flow_VerifySub_to_GeneralViol">
+        <di:waypoint x="1480" y="210"/>
+        <di:waypoint x="1540" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GeneralViol_Yes_di" bpmnElement="Flow_GeneralViol_Yes">
+        <di:waypoint x="1565" y="185"/>
+        <di:waypoint x="1565" y="80"/>
+        <di:waypoint x="1640" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GeneralViol_No_di" bpmnElement="Flow_GeneralViol_No">
+        <di:waypoint x="1590" y="210"/>
+        <di:waypoint x="1820" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GeneralViol_to_Calculate_di" bpmnElement="Flow_GeneralViol_to_Calculate">
+        <di:waypoint x="1740" y="80"/>
+        <di:waypoint x="1870" y="80"/>
+        <di:waypoint x="1870" y="170"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Calculate_to_HasFailed_di" bpmnElement="Flow_Calculate_to_HasFailed">
+        <di:waypoint x="1920" y="210"/>
+        <di:waypoint x="1980" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HasFailed_Yes_di" bpmnElement="Flow_HasFailed_Yes">
+        <di:waypoint x="2005" y="185"/>
+        <di:waypoint x="2005" y="80"/>
+        <di:waypoint x="2080" y="80"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HasFailed_No_di" bpmnElement="Flow_HasFailed_No">
+        <di:waypoint x="2005" y="235"/>
+        <di:waypoint x="2005" y="370"/>
+        <di:waypoint x="2080" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_DisplayFailed_to_End_di" bpmnElement="Flow_DisplayFailed_to_End">
+        <di:waypoint x="2180" y="80"/>
+        <di:waypoint x="2278" y="80"/>
+        <di:waypoint x="2278" y="210"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NoFailed_to_End_di" bpmnElement="Flow_NoFailed_to_End">
+        <di:waypoint x="2180" y="370"/>
+        <di:waypoint x="2278" y="370"/>
+        <di:waypoint x="2278" y="210"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

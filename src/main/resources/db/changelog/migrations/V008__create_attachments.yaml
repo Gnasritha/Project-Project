@@ -1,0 +1,83 @@
+##############################################################################
+#  V008 — Create ATTACHMENTS table
+#  Depends on: V007 (inspection_case)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V008-create-attachments
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: attachments_attachment_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: attachments
+            remarks: "File metadata for documents/photos captured during an inspection"
+            columns:
+
+              - column:
+                  name: attachment_id
+                  type: BIGINT
+                  defaultValueSequenceNext: attachments_attachment_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_attachments
+                    nullable: false
+
+              - column:
+                  name: inspection_id
+                  type: BIGINT
+                  remarks: "FK → inspection_case.inspection_id"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: file_name
+                  type: VARCHAR(300)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: file_path
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: file_type
+                  type: VARCHAR(100)
+                  remarks: "MIME type or extension, e.g. image/jpeg, application/pdf"
+
+              - column:
+                  name: uploaded_at
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
+
+        # ── Foreign key: attachments → inspection_case ────────────────────
+        - addForeignKeyConstraint:
+            baseTableName: attachments
+            baseColumnNames: inspection_id
+            referencedTableName: inspection_case
+            referencedColumnNames: inspection_id
+            constraintName: fk_attachment_inspection
+            onDelete: CASCADE
+            onUpdate: CASCADE
+
+        - createIndex:
+            tableName: attachments
+            indexName: idx_attachments_inspection_id
+            columns:
+              - column:
+                  name: inspection_id
+
+      rollback:
+        - dropTable:
+            tableName: attachments
+        - dropSequence:
+            sequenceName: attachments_attachment_id_seq

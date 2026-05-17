@@ -1,0 +1,175 @@
+##############################################################################
+#  V007 — Create INSPECTION_CASE table
+#  Depends on: V002 (inspection_type), V004 (users),
+#              V005 (establishment), V006 (license)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V007-create-inspection-case
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: inspection_case_inspection_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: inspection_case
+            remarks: "Central aggregate capturing a single inspection event"
+            columns:
+
+              - column:
+                  name: inspection_id
+                  type: BIGINT
+                  defaultValueSequenceNext: inspection_case_inspection_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_inspection_case
+                    nullable: false
+
+              - column:
+                  name: inspection_number
+                  type: VARCHAR(100)
+                  remarks: "Human-readable unique inspection reference (UK)"
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_inspection_number
+
+              - column:
+                  name: inspection_type_id
+                  type: BIGINT
+                  remarks: "FK → inspection_type"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: inspector_id
+                  type: BIGINT
+                  remarks: "FK → users (the assigned inspector)"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: establishment_id
+                  type: BIGINT
+                  remarks: "FK → establishment"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: license_id
+                  type: BIGINT
+                  remarks: "FK → license (nullable — license may not exist yet)"
+
+              - column:
+                  name: inspection_mode
+                  type: VARCHAR(50)
+                  remarks: "ON_SITE | REMOTE | VIRTUAL"
+
+              - column:
+                  name: status
+                  type: VARCHAR(50)
+                  remarks: "SCHEDULED | IN_PROGRESS | COMPLETED | CANCELLED"
+
+              - column:
+                  name: current_stage
+                  type: VARCHAR(100)
+                  remarks: "Current BPMN workflow stage"
+
+              - column:
+                  name: inspection_date
+                  type: TIMESTAMP WITHOUT TIME ZONE
+
+              - column:
+                  name: latitude
+                  type: DOUBLE PRECISION
+
+              - column:
+                  name: longitude
+                  type: DOUBLE PRECISION
+
+              - column:
+                  name: remarks
+                  type: TEXT
+
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITHOUT TIME ZONE
+                  defaultValueComputed: NOW()
+                  constraints:
+                    nullable: false
+
+        # ── Foreign keys ──────────────────────────────────────────────────
+        - addForeignKeyConstraint:
+            baseTableName: inspection_case
+            baseColumnNames: inspection_type_id
+            referencedTableName: inspection_type
+            referencedColumnNames: inspection_type_id
+            constraintName: fk_case_inspection_type
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: inspection_case
+            baseColumnNames: inspector_id
+            referencedTableName: users
+            referencedColumnNames: user_id
+            constraintName: fk_case_inspector
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: inspection_case
+            baseColumnNames: establishment_id
+            referencedTableName: establishment
+            referencedColumnNames: establishment_id
+            constraintName: fk_case_establishment
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: inspection_case
+            baseColumnNames: license_id
+            referencedTableName: license
+            referencedColumnNames: license_id
+            constraintName: fk_case_license
+            onDelete: SET NULL
+            onUpdate: CASCADE
+
+        # ── Performance indexes ───────────────────────────────────────────
+        - createIndex:
+            tableName: inspection_case
+            indexName: idx_inspection_case_inspector_id
+            columns:
+              - column:
+                  name: inspector_id
+
+        - createIndex:
+            tableName: inspection_case
+            indexName: idx_inspection_case_establishment_id
+            columns:
+              - column:
+                  name: establishment_id
+
+        - createIndex:
+            tableName: inspection_case
+            indexName: idx_inspection_case_status
+            columns:
+              - column:
+                  name: status
+
+        - createIndex:
+            tableName: inspection_case
+            indexName: idx_inspection_case_inspection_date
+            columns:
+              - column:
+                  name: inspection_date
+
+      rollback:
+        - dropTable:
+            tableName: inspection_case
+        - dropSequence:
+            sequenceName: inspection_case_inspection_id_seq

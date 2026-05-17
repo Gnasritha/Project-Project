@@ -1,0 +1,54 @@
+##############################################################################
+#  V003 — Create CLAUSE table
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V003-create-clause
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: clause_clause_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: clause
+            remarks: "A regulatory/legal clause that can be found violated during an inspection"
+            columns:
+
+              - column:
+                  name: clause_id
+                  type: BIGINT
+                  defaultValueSequenceNext: clause_clause_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_clause
+                    nullable: false
+
+              - column:
+                  name: clause_code
+                  type: VARCHAR(50)
+                  remarks: "Short unique code identifying the clause (e.g. FS-001)"
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_clause_code
+
+              - column:
+                  name: clause_name
+                  type: VARCHAR(300)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: severity_level
+                  type: VARCHAR(50)
+                  remarks: "Default severity: LOW | MEDIUM | HIGH | CRITICAL"
+
+      rollback:
+        - dropTable:
+            tableName: clause
+        - dropSequence:
+            sequenceName: clause_clause_id_seq

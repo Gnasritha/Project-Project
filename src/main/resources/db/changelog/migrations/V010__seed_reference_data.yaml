@@ -1,0 +1,149 @@
+##############################################################################
+#  V010 — Seed reference / lookup data
+#  Inserts initial ROLES, INSPECTION_TYPE, and CLAUSE records
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V010-seed-roles
+      author: aaseya
+      context: "!test"          # skip in unit-test context (H2)
+      changes:
+
+        # ── Roles ─────────────────────────────────────────────────────────
+        - insert:
+            tableName: roles
+            columns:
+              - column: {name: role_name, value: "ADMIN"}
+        - insert:
+            tableName: roles
+            columns:
+              - column: {name: role_name, value: "INSPECTOR"}
+        - insert:
+            tableName: roles
+            columns:
+              - column: {name: role_name, value: "SUPERVISOR"}
+        - insert:
+            tableName: roles
+            columns:
+              - column: {name: role_name, value: "VIEWER"}
+
+      rollback:
+        - delete:
+            tableName: roles
+            where: role_name IN ('ADMIN','INSPECTOR','SUPERVISOR','VIEWER')
+
+  # ── Inspection Types ──────────────────────────────────────────────────────
+  - changeSet:
+      id: V010-seed-inspection-types
+      author: aaseya
+      context: "!test"
+      changes:
+
+        - insert:
+            tableName: inspection_type
+            columns:
+              - column: {name: inspection_name, value: "Fire Safety Inspection"}
+              - column: {name: inspection_code, value: "FIRE"}
+              - column: {name: active, valueBoolean: true}
+
+        - insert:
+            tableName: inspection_type
+            columns:
+              - column: {name: inspection_name, value: "Food Hygiene Inspection"}
+              - column: {name: inspection_code, value: "FOOD"}
+              - column: {name: active, valueBoolean: true}
+
+        - insert:
+            tableName: inspection_type
+            columns:
+              - column: {name: inspection_name, value: "Health & Safety Inspection"}
+              - column: {name: inspection_code, value: "HEALTH"}
+              - column: {name: active, valueBoolean: true}
+
+        - insert:
+            tableName: inspection_type
+            columns:
+              - column: {name: inspection_name, value: "Environmental Compliance Inspection"}
+              - column: {name: inspection_code, value: "ENV"}
+              - column: {name: active, valueBoolean: true}
+
+        - insert:
+            tableName: inspection_type
+            columns:
+              - column: {name: inspection_name, value: "Building & Construction Inspection"}
+              - column: {name: inspection_code, value: "BUILD"}
+              - column: {name: active, valueBoolean: true}
+
+      rollback:
+        - delete:
+            tableName: inspection_type
+            where: inspection_code IN ('FIRE','FOOD','HEALTH','ENV','BUILD')
+
+  # ── Sample Clauses ────────────────────────────────────────────────────────
+  - changeSet:
+      id: V010-seed-clauses
+      author: aaseya
+      context: "!test"
+      changes:
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "FS-001"}
+              - column: {name: clause_name, value: "Fire extinguisher accessibility and maintenance"}
+              - column: {name: severity_level, value: "HIGH"}
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "FS-002"}
+              - column: {name: clause_name, value: "Emergency exit signage and clearance"}
+              - column: {name: severity_level, value: "CRITICAL"}
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "FH-001"}
+              - column: {name: clause_name, value: "Proper food storage temperature compliance"}
+              - column: {name: severity_level, value: "HIGH"}
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "FH-002"}
+              - column: {name: clause_name, value: "Personal hygiene and protective equipment"}
+              - column: {name: severity_level, value: "MEDIUM"}
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "HS-001"}
+              - column: {name: clause_name, value: "Proper PPE provision and usage"}
+              - column: {name: severity_level, value: "HIGH"}
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "HS-002"}
+              - column: {name: clause_name, value: "Hazardous materials labelling and storage"}
+              - column: {name: severity_level, value: "CRITICAL"}
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "ENV-001"}
+              - column: {name: clause_name, value: "Waste disposal compliance"}
+              - column: {name: severity_level, value: "MEDIUM"}
+
+        - insert:
+            tableName: clause
+            columns:
+              - column: {name: clause_code, value: "ENV-002"}
+              - column: {name: clause_name, value: "Noise and emission level compliance"}
+              - column: {name: severity_level, value: "LOW"}
+
+      rollback:
+        - delete:
+            tableName: clause
+            where: clause_code IN ('FS-001','FS-002','FH-001','FH-002','HS-001','HS-002','ENV-001','ENV-002')

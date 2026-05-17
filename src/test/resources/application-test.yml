@@ -1,0 +1,63 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  Momthathel — Test configuration
+#  Uses H2 in-memory database — no PostgreSQL, Keycloak, or Camunda needed.
+# ═══════════════════════════════════════════════════════════════════════
+spring:
+
+  # Exclude OAuth2 resource server + Spring Security web auto-config so we
+  # don't need a running Keycloak (or a reachable issuer-uri) during tests.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+  datasource:
+    url: jdbc:h2:mem:momthathel_test;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  # Liquibase is disabled in tests — Hibernate's ddl-auto creates the schema
+  # from the @Entity classes directly. Avoids any PG-specific migration issues.
+  liquibase:
+    enabled: false
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 50MB
+
+  # Clear the issuer-uri so even if auto-config slips through, no remote
+  # OIDC lookup is attempted.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri:
+
+camunda:
+  client:
+    enabled: false      # disable Camunda Zeebe client at test bootstrap
+
+momthathel:
+  attachments:
+    storage-path: ./target/test-attachments
+
+keycloak:
+  client-id: momthathel-mobile
+
+logging:
+  level:
+    com.aaseya.momthathel: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.web: INFO

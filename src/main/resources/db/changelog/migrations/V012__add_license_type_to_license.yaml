@@ -1,0 +1,25 @@
+##############################################################################
+#  V012 — Add license_type column to LICENSE table
+#  Supports "Define based on" dropdown in the mobile app
+#  (e.g. "Commercial License", "Industrial License")
+#  Depends on: V006 (license)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V012-add-license-type-column
+      author: aaseya
+      changes:
+
+        - addColumn:
+            tableName: license
+            columns:
+              - column:
+                  name: license_type
+                  type: VARCHAR(100)
+                  remarks: "e.g. Commercial License, Industrial License, Professional License"
+
+      rollback:
+        - dropColumn:
+            tableName: license
+            columnName: license_type

@@ -1,0 +1,154 @@
+##############################################################################
+#  V014 — Create ISIC_ACTIVITY table + seed
+#  Backs the ISIC/Detail Activity dropdowns on the no-license Facility-status
+#  screen (ISM-4). Parent rows are top-level ISIC categories;
+#  children (parent_id NOT NULL) are detail activities.
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V014-create-isic-activity
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: isic_activity_isic_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: isic_activity
+            remarks: "ISIC / detail-activity hierarchy used by the no-license facility flow"
+            columns:
+
+              - column:
+                  name: isic_id
+                  type: BIGINT
+                  defaultValueSequenceNext: isic_activity_isic_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_isic_activity
+                    nullable: false
+
+              - column:
+                  name: isic_code
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_isic_code
+
+              - column:
+                  name: name_en
+                  type: VARCHAR(300)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: name_ar
+                  type: VARCHAR(300)
+
+              - column:
+                  name: parent_id
+                  type: BIGINT
+                  remarks: "Self-reference; null = top-level ISIC category"
+
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+        - addForeignKeyConstraint:
+            baseTableName: isic_activity
+            baseColumnNames: parent_id
+            referencedTableName: isic_activity
+            referencedColumnNames: isic_id
+            constraintName: fk_isic_parent
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+
+        - createIndex:
+            tableName: isic_activity
+            indexName: idx_isic_parent
+            columns:
+              - column:
+                  name: parent_id
+
+        # ── Seed: a few realistic ISIC categories + detail activities ─────
+        - insert:
+            tableName: isic_activity
+            columns:
+              - column: { name: isic_id,   valueNumeric: 1 }
+              - column: { name: isic_code, value: "I-56" }
+              - column: { name: name_en,   value: "Food & Beverage Service Activities" }
+              - column: { name: name_ar,   value: "أنشطة خدمات الأطعمة والمشروبات" }
+              - column: { name: active,    valueBoolean: true }
+
+        - insert:
+            tableName: isic_activity
+            columns:
+              - column: { name: isic_id,   valueNumeric: 2 }
+              - column: { name: isic_code, value: "G-47" }
+              - column: { name: name_en,   value: "Retail Trade" }
+              - column: { name: name_ar,   value: "تجارة التجزئة" }
+              - column: { name: active,    valueBoolean: true }
+
+        - insert:
+            tableName: isic_activity
+            columns:
+              - column: { name: isic_id,   valueNumeric: 3 }
+              - column: { name: isic_code, value: "Q-86" }
+              - column: { name: name_en,   value: "Human Health Activities" }
+              - column: { name: name_ar,   value: "الأنشطة الصحية البشرية" }
+              - column: { name: active,    valueBoolean: true }
+
+        # detail activities under I-56
+        - insert:
+            tableName: isic_activity
+            columns:
+              - column: { name: isic_id,   valueNumeric: 11 }
+              - column: { name: isic_code, value: "I-5610" }
+              - column: { name: name_en,   value: "Restaurants and mobile food service" }
+              - column: { name: name_ar,   value: "المطاعم وخدمات الطعام المتنقلة" }
+              - column: { name: parent_id, valueNumeric: 1 }
+              - column: { name: active,    valueBoolean: true }
+
+        - insert:
+            tableName: isic_activity
+            columns:
+              - column: { name: isic_id,   valueNumeric: 12 }
+              - column: { name: isic_code, value: "I-5630" }
+              - column: { name: name_en,   value: "Beverage serving activities (cafés)" }
+              - column: { name: name_ar,   value: "أنشطة تقديم المشروبات (المقاهي)" }
+              - column: { name: parent_id, valueNumeric: 1 }
+              - column: { name: active,    valueBoolean: true }
+
+        # detail activities under G-47
+        - insert:
+            tableName: isic_activity
+            columns:
+              - column: { name: isic_id,   valueNumeric: 21 }
+              - column: { name: isic_code, value: "G-4711" }
+              - column: { name: name_en,   value: "Retail sale in non-specialised stores" }
+              - column: { name: name_ar,   value: "البيع بالتجزئة في المتاجر غير المتخصصة" }
+              - column: { name: parent_id, valueNumeric: 2 }
+              - column: { name: active,    valueBoolean: true }
+
+        # detail activities under Q-86
+        - insert:
+            tableName: isic_activity
+            columns:
+              - column: { name: isic_id,   valueNumeric: 31 }
+              - column: { name: isic_code, value: "Q-8620" }
+              - column: { name: name_en,   value: "Medical and dental practice activities" }
+              - column: { name: name_ar,   value: "أنشطة ممارسة الطب والأسنان" }
+              - column: { name: parent_id, valueNumeric: 3 }
+              - column: { name: active,    valueBoolean: true }
+
+      rollback:
+        - dropTable:
+            tableName: isic_activity
+        - dropSequence:
+            sequenceName: isic_activity_isic_id_seq

@@ -1,0 +1,732 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  id="Definitions_PerformInspection"
+                  targetNamespace="http://aaseya.com/bpmn/momthathel"
+                  exporter="Momthathel"
+                  exporterVersion="1.0.0"
+                  modeler:executionPlatform="Camunda Cloud"
+                  modeler:executionPlatformVersion="8.9.0">
+
+  <bpmn:process id="PerformInspection" name="Perform Inspection (ISM)" isExecutable="true">
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         START EVENT — process kicked off via REST: POST /api/inspection/start
+         Required input variables:
+           inspectorId        (Long)
+           licenseNumber      (String) — optional; null triggers no-license flow
+           inspectionTypeId   (Long)
+           caseFromMobileApp  (boolean)
+         ════════════════════════════════════════════════════════════════════ -->
+    <bpmn:startEvent id="StartEvent_Inspection" name="Start Inspection">
+      <bpmn:outgoing>Flow_Start_to_SkipDecision</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- ── Decision: Is case from mobile app? (Pega: IsCaseFromMobileApp when) ── -->
+    <bpmn:exclusiveGateway id="Gateway_IsCaseFromMobile" name="From mobile app?">
+      <bpmn:incoming>Flow_Start_to_SkipDecision</bpmn:incoming>
+      <bpmn:outgoing>Flow_Mobile_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Mobile_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- Mobile-app path: skip the inspector decision sub-flow -->
+    <bpmn:callActivity id="CallActivity_SkipPerformInspection" name="Skip Perform Inspection">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="AdhocCreateCase" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Mobile_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Skip_to_IGCommercial</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <!-- Non-mobile path: identify the visit first -->
+    <bpmn:callActivity id="CallActivity_IdentifyInspectionVisit" name="Identify Inspection Visit">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="IdentifySituationOnNature" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Mobile_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Identify_to_IGCommercial</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <!-- ── Decision: IG Commercial / GH scenario? (Pega: IsIGCommercialScenario) ── -->
+    <bpmn:exclusiveGateway id="Gateway_IGCommercialScenario" name="IG-Comm / GH scenario?">
+      <bpmn:incoming>Flow_Skip_to_IGCommercial</bpmn:incoming>
+      <bpmn:incoming>Flow_Identify_to_IGCommercial</bpmn:incoming>
+      <bpmn:outgoing>Flow_IGComm_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_IGComm_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_IGKnownViolatorCommercial" name="IG Known Violator (Commercial)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="ig-known-violator-commercial"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_IGComm_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_IGComm_to_GH</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_GHStandingCommittee" name="GH Standing Committee Process">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="gh-standing-committee-process"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_IGComm_to_GH</bpmn:incoming>
+      <bpmn:outgoing>Flow_GH_to_NewCase</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_CreateInspectionVisitData" name="Create Inspection Visit Data">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="create-inspection-visit-data"/>
+        <zeebe:ioMapping>
+          <zeebe:output source="=inspectionId" target="inspectionId"/>
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_GH_to_NewCase</bpmn:incoming>
+      <bpmn:incoming>Flow_IGComm_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_NewCase_to_GHScheduled</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ── Decision: GH Scheduled cases? (Pega: ISGHScheduled?) ── -->
+    <bpmn:exclusiveGateway id="Gateway_ISGHScheduled" name="GH Scheduled?">
+      <bpmn:incoming>Flow_NewCase_to_GHScheduled</bpmn:incoming>
+      <bpmn:outgoing>Flow_GHScheduled_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_GHScheduled_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ScheduleQualityCase" name="Schedule Quality Case">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="schedule-quality-case"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_GHScheduled_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ScheduleQuality_to_TypeOfVisit</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ── Type of Visit decision (Pega: TypeOfVisit decision table) ── -->
+    <bpmn:exclusiveGateway id="Gateway_TypeOfVisit" name="Type Of Visit">
+      <bpmn:incoming>Flow_GHScheduled_No</bpmn:incoming>
+      <bpmn:incoming>Flow_ScheduleQuality_to_TypeOfVisit</bpmn:incoming>
+      <bpmn:outgoing>Flow_TypeOfVisit_Campaign</bpmn:outgoing>
+      <bpmn:outgoing>Flow_TypeOfVisit_Adhoc</bpmn:outgoing>
+      <bpmn:outgoing>Flow_TypeOfVisit_Routine</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <!-- ── Campaign path -->
+    <bpmn:callActivity id="CallActivity_CampaignUpdateLocation" name="Campaign Update Location Visit">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="IdentifySituationOnNature" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_TypeOfVisit_Campaign</bpmn:incoming>
+      <bpmn:outgoing>Flow_Campaign_to_IsCampaign</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <bpmn:exclusiveGateway id="Gateway_IsCampaignVisit" name="Is Campaign Visit?">
+      <bpmn:incoming>Flow_Campaign_to_IsCampaign</bpmn:incoming>
+      <bpmn:outgoing>Flow_IsCampaign_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_IsCampaign_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:callActivity id="CallActivity_EnterAndValidateClausesCampaign" name="Enter And Validate Clauses (Campaign)">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="EnterAndValidateClauses" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_IsCampaign_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_CampaignClauses_to_End</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <!-- ── Adhoc path (license capture) -->
+    <bpmn:callActivity id="CallActivity_AdhocCreateCase" name="Adhoc Create Case">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="AdhocCreateCase" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_TypeOfVisit_Adhoc</bpmn:incoming>
+      <bpmn:outgoing>Flow_Adhoc_to_IsCRMVD</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <!-- ── Routine path -->
+    <bpmn:callActivity id="CallActivity_IdentifyEstablishment" name="Identify Establishment Details">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="IdentifySituationOnNature" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_TypeOfVisit_Routine</bpmn:incoming>
+      <bpmn:incoming>Flow_IsCampaign_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Identify_to_IsCRMVD</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <!-- ── Decision: Is CRM VD Incident? (Pega: IsCRMVDIncident) ── -->
+    <bpmn:exclusiveGateway id="Gateway_IsCRMVDIncident" name="CRM VD Incident?">
+      <bpmn:incoming>Flow_Adhoc_to_IsCRMVD</bpmn:incoming>
+      <bpmn:incoming>Flow_Identify_to_IsCRMVD</bpmn:incoming>
+      <bpmn:outgoing>Flow_CRMVD_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_CRMVD_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_SaveAttachmentsCommercial" name="Save Attachments For Commercial">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="save-attachments-for-commercial"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_CRMVD_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_SaveAttach_to_CheckInspectors</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_CheckForInspectors" name="Check for Inspectors">
+      <bpmn:incoming>Flow_SaveAttach_to_CheckInspectors</bpmn:incoming>
+      <bpmn:incoming>Flow_CRMVD_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_HasInspectors_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_HasInspectors_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ReassignToInspector" name="Reassign to Appropriate Inspector">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="reassign-to-inspector"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_HasInspectors_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_Reassign_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ── Risk-based dispatch (CIS_AI_DEV) ── -->
+    <bpmn:exclusiveGateway id="Gateway_IsRiskBasedDispatchNeeded" name="Risk-Based Dispatch Needed?">
+      <bpmn:incoming>Flow_HasInspectors_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_RiskDispatch_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_RiskDispatch_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_RiskBasedDispatch" name="Risk Based Dispatch">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="risk-based-dispatch"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_RiskDispatch_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_RiskDispatch_to_EnterClauses</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ── Enter and validate clauses (main) ── -->
+    <bpmn:callActivity id="CallActivity_EnterAndValidateClauses" name="Enter And Validate Clauses">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="EnterAndValidateClauses" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_RiskDispatch_No</bpmn:incoming>
+      <bpmn:incoming>Flow_RiskDispatch_to_EnterClauses</bpmn:incoming>
+      <bpmn:outgoing>Flow_EnterClauses_to_HasFailed</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <!-- ── Has Failed Clauses gateway (Pega: HasFailedClauses) ── -->
+    <bpmn:exclusiveGateway id="Gateway_HasFailedClauses" name="Has Failed Clauses?">
+      <bpmn:incoming>Flow_EnterClauses_to_HasFailed</bpmn:incoming>
+      <bpmn:outgoing>Flow_Failed_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Failed_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_FetchEstbClassification" name="Fetch Establishment Classification">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="fetch-estb-classification"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Failed_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_FetchEstb_to_HasPM</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ── PM Clauses gateway (Pega: HasPMClauses) ── -->
+    <bpmn:exclusiveGateway id="Gateway_HasPMClauses" name="Has PM Clauses?">
+      <bpmn:incoming>Flow_FetchEstb_to_HasPM</bpmn:incoming>
+      <bpmn:outgoing>Flow_HasPM_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_HasPM_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_PrecautionaryMeasures" name="Precautionary Measures">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="precautionary-measures"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_HasPM_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_PM_to_ClosingAndReopen</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:callActivity id="CallActivity_ClosingAndReopen" name="Closing And Reopen">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="IdentifySituationOnNature" propagateAllChildVariables="true"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_HasPM_No</bpmn:incoming>
+      <bpmn:incoming>Flow_PM_to_ClosingAndReopen</bpmn:incoming>
+      <bpmn:outgoing>Flow_ClosingAndReopen_to_PerformDecision</bpmn:outgoing>
+    </bpmn:callActivity>
+
+    <bpmn:serviceTask id="Task_PerformInspectorDecision" name="Perform Inspector Decision">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="perform-inspector-decision"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ClosingAndReopen_to_PerformDecision</bpmn:incoming>
+      <bpmn:incoming>Flow_Failed_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_PerformDecision_to_UpdateTable</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_UpdateToEstVisitTable" name="Update To Est Visit Table">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="update-est-visit-table"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_PerformDecision_to_UpdateTable</bpmn:incoming>
+      <bpmn:outgoing>Flow_UpdateTable_to_QualityCheck</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ── Decision: Is Quality Inspection? -->
+    <bpmn:exclusiveGateway id="Gateway_IsQualityInspection" name="Is Quality Inspection?">
+      <bpmn:incoming>Flow_UpdateTable_to_QualityCheck</bpmn:incoming>
+      <bpmn:outgoing>Flow_Quality_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Quality_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_ChangeToSpecificStage" name="Change to Specific Stage">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="change-to-specific-stage"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Quality_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ChangeStage_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_Inspection_Complete" name="Inspection Complete">
+      <bpmn:incoming>Flow_Quality_No</bpmn:incoming>
+      <bpmn:incoming>Flow_ChangeStage_to_End</bpmn:incoming>
+      <bpmn:incoming>Flow_CampaignClauses_to_End</bpmn:incoming>
+      <bpmn:incoming>Flow_Reassign_to_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- ════════════════════════════════════════════════════════════════════
+         SEQUENCE FLOWS
+         ════════════════════════════════════════════════════════════════════ -->
+    <bpmn:sequenceFlow id="Flow_Start_to_SkipDecision" sourceRef="StartEvent_Inspection" targetRef="Gateway_IsCaseFromMobile"/>
+
+    <bpmn:sequenceFlow id="Flow_Mobile_Yes" name="Yes" sourceRef="Gateway_IsCaseFromMobile" targetRef="CallActivity_SkipPerformInspection">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=caseFromMobileApp = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Mobile_No" name="No" sourceRef="Gateway_IsCaseFromMobile" targetRef="CallActivity_IdentifyInspectionVisit">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=caseFromMobileApp != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_Skip_to_IGCommercial" sourceRef="CallActivity_SkipPerformInspection" targetRef="Gateway_IGCommercialScenario"/>
+    <bpmn:sequenceFlow id="Flow_Identify_to_IGCommercial" sourceRef="CallActivity_IdentifyInspectionVisit" targetRef="Gateway_IGCommercialScenario"/>
+
+    <bpmn:sequenceFlow id="Flow_IGComm_Yes" name="IG-Comm" sourceRef="Gateway_IGCommercialScenario" targetRef="Task_IGKnownViolatorCommercial">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isIGCommercialScenario = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_IGComm_No" name="Else" sourceRef="Gateway_IGCommercialScenario" targetRef="Task_CreateInspectionVisitData">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isIGCommercialScenario != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_IGComm_to_GH" sourceRef="Task_IGKnownViolatorCommercial" targetRef="Task_GHStandingCommittee"/>
+    <bpmn:sequenceFlow id="Flow_GH_to_NewCase" sourceRef="Task_GHStandingCommittee" targetRef="Task_CreateInspectionVisitData"/>
+    <bpmn:sequenceFlow id="Flow_NewCase_to_GHScheduled" sourceRef="Task_CreateInspectionVisitData" targetRef="Gateway_ISGHScheduled"/>
+
+    <bpmn:sequenceFlow id="Flow_GHScheduled_Yes" name="Yes" sourceRef="Gateway_ISGHScheduled" targetRef="Task_ScheduleQualityCase">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isGHScheduled = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_GHScheduled_No" name="No" sourceRef="Gateway_ISGHScheduled" targetRef="Gateway_TypeOfVisit">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isGHScheduled != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ScheduleQuality_to_TypeOfVisit" sourceRef="Task_ScheduleQualityCase" targetRef="Gateway_TypeOfVisit"/>
+
+    <bpmn:sequenceFlow id="Flow_TypeOfVisit_Campaign" name="Campaign" sourceRef="Gateway_TypeOfVisit" targetRef="CallActivity_CampaignUpdateLocation">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=typeOfVisit = "CAMPAIGN"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_TypeOfVisit_Adhoc" name="Adhoc" sourceRef="Gateway_TypeOfVisit" targetRef="CallActivity_AdhocCreateCase">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=typeOfVisit = "ADHOC"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_TypeOfVisit_Routine" name="Routine" sourceRef="Gateway_TypeOfVisit" targetRef="CallActivity_IdentifyEstablishment">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=typeOfVisit = "ROUTINE"</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_Campaign_to_IsCampaign" sourceRef="CallActivity_CampaignUpdateLocation" targetRef="Gateway_IsCampaignVisit"/>
+    <bpmn:sequenceFlow id="Flow_IsCampaign_Yes" name="Yes" sourceRef="Gateway_IsCampaignVisit" targetRef="CallActivity_EnterAndValidateClausesCampaign">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCampaignVisit = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_IsCampaign_No" name="No" sourceRef="Gateway_IsCampaignVisit" targetRef="CallActivity_IdentifyEstablishment">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCampaignVisit != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_CampaignClauses_to_End" sourceRef="CallActivity_EnterAndValidateClausesCampaign" targetRef="EndEvent_Inspection_Complete"/>
+
+    <bpmn:sequenceFlow id="Flow_Adhoc_to_IsCRMVD" sourceRef="CallActivity_AdhocCreateCase" targetRef="Gateway_IsCRMVDIncident"/>
+    <bpmn:sequenceFlow id="Flow_Identify_to_IsCRMVD" sourceRef="CallActivity_IdentifyEstablishment" targetRef="Gateway_IsCRMVDIncident"/>
+
+    <bpmn:sequenceFlow id="Flow_CRMVD_Yes" name="Yes" sourceRef="Gateway_IsCRMVDIncident" targetRef="Task_SaveAttachmentsCommercial">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCRMVDIncident = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_CRMVD_No" name="No" sourceRef="Gateway_IsCRMVDIncident" targetRef="Gateway_CheckForInspectors">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCRMVDIncident != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_SaveAttach_to_CheckInspectors" sourceRef="Task_SaveAttachmentsCommercial" targetRef="Gateway_CheckForInspectors"/>
+
+    <bpmn:sequenceFlow id="Flow_HasInspectors_Yes" name="Yes" sourceRef="Gateway_CheckForInspectors" targetRef="Gateway_IsRiskBasedDispatchNeeded">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasInspectors = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HasInspectors_No" name="No" sourceRef="Gateway_CheckForInspectors" targetRef="Task_ReassignToInspector">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasInspectors != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Reassign_to_End" sourceRef="Task_ReassignToInspector" targetRef="EndEvent_Inspection_Complete"/>
+
+    <bpmn:sequenceFlow id="Flow_RiskDispatch_Yes" name="Yes" sourceRef="Gateway_IsRiskBasedDispatchNeeded" targetRef="Task_RiskBasedDispatch">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isRiskBasedDispatchNeeded = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_RiskDispatch_No" name="No" sourceRef="Gateway_IsRiskBasedDispatchNeeded" targetRef="CallActivity_EnterAndValidateClauses">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isRiskBasedDispatchNeeded != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_RiskDispatch_to_EnterClauses" sourceRef="Task_RiskBasedDispatch" targetRef="CallActivity_EnterAndValidateClauses"/>
+
+    <bpmn:sequenceFlow id="Flow_EnterClauses_to_HasFailed" sourceRef="CallActivity_EnterAndValidateClauses" targetRef="Gateway_HasFailedClauses"/>
+
+    <bpmn:sequenceFlow id="Flow_Failed_Yes" name="Failed" sourceRef="Gateway_HasFailedClauses" targetRef="Task_FetchEstbClassification">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasFailedClauses = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Failed_No" name="No Failed" sourceRef="Gateway_HasFailedClauses" targetRef="Task_PerformInspectorDecision">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasFailedClauses != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_FetchEstb_to_HasPM" sourceRef="Task_FetchEstbClassification" targetRef="Gateway_HasPMClauses"/>
+    <bpmn:sequenceFlow id="Flow_HasPM_Yes" name="Has PM" sourceRef="Gateway_HasPMClauses" targetRef="Task_PrecautionaryMeasures">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasPMClauses = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_HasPM_No" name="No PM" sourceRef="Gateway_HasPMClauses" targetRef="CallActivity_ClosingAndReopen">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=hasPMClauses != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_PM_to_ClosingAndReopen" sourceRef="Task_PrecautionaryMeasures" targetRef="CallActivity_ClosingAndReopen"/>
+    <bpmn:sequenceFlow id="Flow_ClosingAndReopen_to_PerformDecision" sourceRef="CallActivity_ClosingAndReopen" targetRef="Task_PerformInspectorDecision"/>
+
+    <bpmn:sequenceFlow id="Flow_PerformDecision_to_UpdateTable" sourceRef="Task_PerformInspectorDecision" targetRef="Task_UpdateToEstVisitTable"/>
+    <bpmn:sequenceFlow id="Flow_UpdateTable_to_QualityCheck" sourceRef="Task_UpdateToEstVisitTable" targetRef="Gateway_IsQualityInspection"/>
+
+    <bpmn:sequenceFlow id="Flow_Quality_Yes" name="Quality" sourceRef="Gateway_IsQualityInspection" targetRef="Task_ChangeToSpecificStage">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isQualityInspection = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Quality_No" name="Else" sourceRef="Gateway_IsQualityInspection" targetRef="EndEvent_Inspection_Complete">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isQualityInspection != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ChangeStage_to_End" sourceRef="Task_ChangeToSpecificStage" targetRef="EndEvent_Inspection_Complete"/>
+
+  </bpmn:process>
+
+  <!-- ════════════════════════════════════════════════════════════════════
+       BPMN DI — shape coordinates and edge waypoints for Camunda Modeler
+       Hand-laid grid layout: ~3600 × 600 px canvas, drag to rearrange.
+       ════════════════════════════════════════════════════════════════════ -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="PerformInspection">
+
+      <!-- Shapes -->
+      <bpmndi:BPMNShape id="StartEvent_Inspection_di" bpmnElement="StartEvent_Inspection">
+        <dc:Bounds x="160" y="282" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="143" y="325" width="71" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsCaseFromMobile_di" bpmnElement="Gateway_IsCaseFromMobile" isMarkerVisible="true">
+        <dc:Bounds x="250" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="237" y="332" width="78" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_SkipPerformInspection_di" bpmnElement="CallActivity_SkipPerformInspection">
+        <dc:Bounds x="340" y="100" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_IdentifyInspectionVisit_di" bpmnElement="CallActivity_IdentifyInspectionVisit">
+        <dc:Bounds x="340" y="420" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IGCommercialScenario_di" bpmnElement="Gateway_IGCommercialScenario" isMarkerVisible="true">
+        <dc:Bounds x="490" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="467" y="332" width="96" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_IGKnownViolatorCommercial_di" bpmnElement="Task_IGKnownViolatorCommercial">
+        <dc:Bounds x="580" y="100" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_GHStandingCommittee_di" bpmnElement="Task_GHStandingCommittee">
+        <dc:Bounds x="730" y="100" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CreateInspectionVisitData_di" bpmnElement="Task_CreateInspectionVisitData">
+        <dc:Bounds x="880" y="260" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ISGHScheduled_di" bpmnElement="Gateway_ISGHScheduled" isMarkerVisible="true">
+        <dc:Bounds x="1030" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1020" y="332" width="70" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ScheduleQualityCase_di" bpmnElement="Task_ScheduleQualityCase">
+        <dc:Bounds x="1120" y="100" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_TypeOfVisit_di" bpmnElement="Gateway_TypeOfVisit" isMarkerVisible="true">
+        <dc:Bounds x="1280" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1265" y="332" width="80" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_CampaignUpdateLocation_di" bpmnElement="CallActivity_CampaignUpdateLocation">
+        <dc:Bounds x="1370" y="-30" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsCampaignVisit_di" bpmnElement="Gateway_IsCampaignVisit" isMarkerVisible="true">
+        <dc:Bounds x="1530" y="-15" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1517" y="42" width="78" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_EnterAndValidateClausesCampaign_di" bpmnElement="CallActivity_EnterAndValidateClausesCampaign">
+        <dc:Bounds x="1640" y="-30" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_AdhocCreateCase_di" bpmnElement="CallActivity_AdhocCreateCase">
+        <dc:Bounds x="1370" y="260" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_IdentifyEstablishment_di" bpmnElement="CallActivity_IdentifyEstablishment">
+        <dc:Bounds x="1370" y="540" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsCRMVDIncident_di" bpmnElement="Gateway_IsCRMVDIncident" isMarkerVisible="true">
+        <dc:Bounds x="1560" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1546" y="332" width="80" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SaveAttachmentsCommercial_di" bpmnElement="Task_SaveAttachmentsCommercial">
+        <dc:Bounds x="1650" y="100" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CheckForInspectors_di" bpmnElement="Gateway_CheckForInspectors" isMarkerVisible="true">
+        <dc:Bounds x="1830" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1813" y="332" width="84" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ReassignToInspector_di" bpmnElement="Task_ReassignToInspector">
+        <dc:Bounds x="1920" y="100" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsRiskBasedDispatchNeeded_di" bpmnElement="Gateway_IsRiskBasedDispatchNeeded" isMarkerVisible="true">
+        <dc:Bounds x="1920" y="425" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1900" y="482" width="91" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_RiskBasedDispatch_di" bpmnElement="Task_RiskBasedDispatch">
+        <dc:Bounds x="2020" y="410" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_EnterAndValidateClauses_di" bpmnElement="CallActivity_EnterAndValidateClauses">
+        <dc:Bounds x="2180" y="260" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HasFailedClauses_di" bpmnElement="Gateway_HasFailedClauses" isMarkerVisible="true">
+        <dc:Bounds x="2340" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2321" y="332" width="89" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FetchEstbClassification_di" bpmnElement="Task_FetchEstbClassification">
+        <dc:Bounds x="2430" y="410" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_HasPMClauses_di" bpmnElement="Gateway_HasPMClauses" isMarkerVisible="true">
+        <dc:Bounds x="2590" y="425" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2571" y="482" width="89" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PrecautionaryMeasures_di" bpmnElement="Task_PrecautionaryMeasures">
+        <dc:Bounds x="2680" y="410" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="CallActivity_ClosingAndReopen_di" bpmnElement="CallActivity_ClosingAndReopen">
+        <dc:Bounds x="2830" y="410" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PerformInspectorDecision_di" bpmnElement="Task_PerformInspectorDecision">
+        <dc:Bounds x="2990" y="260" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_UpdateToEstVisitTable_di" bpmnElement="Task_UpdateToEstVisitTable">
+        <dc:Bounds x="3140" y="260" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsQualityInspection_di" bpmnElement="Gateway_IsQualityInspection" isMarkerVisible="true">
+        <dc:Bounds x="3300" y="275" width="50" height="50"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="3279" y="332" width="92" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_ChangeToSpecificStage_di" bpmnElement="Task_ChangeToSpecificStage">
+        <dc:Bounds x="3390" y="100" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Inspection_Complete_di" bpmnElement="EndEvent_Inspection_Complete">
+        <dc:Bounds x="3590" y="282" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="3567" y="325" width="83" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <!-- Edges -->
+      <bpmndi:BPMNEdge id="Flow_Start_to_SkipDecision_di" bpmnElement="Flow_Start_to_SkipDecision">
+        <di:waypoint x="196" y="300"/>
+        <di:waypoint x="250" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Mobile_Yes_di" bpmnElement="Flow_Mobile_Yes">
+        <di:waypoint x="275" y="275"/>
+        <di:waypoint x="275" y="140"/>
+        <di:waypoint x="340" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Mobile_No_di" bpmnElement="Flow_Mobile_No">
+        <di:waypoint x="275" y="325"/>
+        <di:waypoint x="275" y="460"/>
+        <di:waypoint x="340" y="460"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Skip_to_IGCommercial_di" bpmnElement="Flow_Skip_to_IGCommercial">
+        <di:waypoint x="440" y="140"/>
+        <di:waypoint x="515" y="140"/>
+        <di:waypoint x="515" y="275"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Identify_to_IGCommercial_di" bpmnElement="Flow_Identify_to_IGCommercial">
+        <di:waypoint x="440" y="460"/>
+        <di:waypoint x="515" y="460"/>
+        <di:waypoint x="515" y="325"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IGComm_Yes_di" bpmnElement="Flow_IGComm_Yes">
+        <di:waypoint x="515" y="275"/>
+        <di:waypoint x="515" y="140"/>
+        <di:waypoint x="580" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IGComm_No_di" bpmnElement="Flow_IGComm_No">
+        <di:waypoint x="540" y="300"/>
+        <di:waypoint x="880" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IGComm_to_GH_di" bpmnElement="Flow_IGComm_to_GH">
+        <di:waypoint x="680" y="140"/>
+        <di:waypoint x="730" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GH_to_NewCase_di" bpmnElement="Flow_GH_to_NewCase">
+        <di:waypoint x="830" y="140"/>
+        <di:waypoint x="930" y="140"/>
+        <di:waypoint x="930" y="260"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_NewCase_to_GHScheduled_di" bpmnElement="Flow_NewCase_to_GHScheduled">
+        <di:waypoint x="980" y="300"/>
+        <di:waypoint x="1030" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GHScheduled_Yes_di" bpmnElement="Flow_GHScheduled_Yes">
+        <di:waypoint x="1055" y="275"/>
+        <di:waypoint x="1055" y="140"/>
+        <di:waypoint x="1120" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_GHScheduled_No_di" bpmnElement="Flow_GHScheduled_No">
+        <di:waypoint x="1080" y="300"/>
+        <di:waypoint x="1280" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ScheduleQuality_to_TypeOfVisit_di" bpmnElement="Flow_ScheduleQuality_to_TypeOfVisit">
+        <di:waypoint x="1220" y="140"/>
+        <di:waypoint x="1305" y="140"/>
+        <di:waypoint x="1305" y="275"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TypeOfVisit_Campaign_di" bpmnElement="Flow_TypeOfVisit_Campaign">
+        <di:waypoint x="1305" y="275"/>
+        <di:waypoint x="1305" y="10"/>
+        <di:waypoint x="1370" y="10"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TypeOfVisit_Adhoc_di" bpmnElement="Flow_TypeOfVisit_Adhoc">
+        <di:waypoint x="1330" y="300"/>
+        <di:waypoint x="1370" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_TypeOfVisit_Routine_di" bpmnElement="Flow_TypeOfVisit_Routine">
+        <di:waypoint x="1305" y="325"/>
+        <di:waypoint x="1305" y="580"/>
+        <di:waypoint x="1370" y="580"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Campaign_to_IsCampaign_di" bpmnElement="Flow_Campaign_to_IsCampaign">
+        <di:waypoint x="1470" y="10"/>
+        <di:waypoint x="1530" y="10"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IsCampaign_Yes_di" bpmnElement="Flow_IsCampaign_Yes">
+        <di:waypoint x="1580" y="10"/>
+        <di:waypoint x="1640" y="10"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_IsCampaign_No_di" bpmnElement="Flow_IsCampaign_No">
+        <di:waypoint x="1555" y="35"/>
+        <di:waypoint x="1555" y="580"/>
+        <di:waypoint x="1470" y="580"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CampaignClauses_to_End_di" bpmnElement="Flow_CampaignClauses_to_End">
+        <di:waypoint x="1740" y="10"/>
+        <di:waypoint x="3608" y="10"/>
+        <di:waypoint x="3608" y="282"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Adhoc_to_IsCRMVD_di" bpmnElement="Flow_Adhoc_to_IsCRMVD">
+        <di:waypoint x="1470" y="300"/>
+        <di:waypoint x="1560" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Identify_to_IsCRMVD_di" bpmnElement="Flow_Identify_to_IsCRMVD">
+        <di:waypoint x="1470" y="580"/>
+        <di:waypoint x="1585" y="580"/>
+        <di:waypoint x="1585" y="325"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CRMVD_Yes_di" bpmnElement="Flow_CRMVD_Yes">
+        <di:waypoint x="1585" y="275"/>
+        <di:waypoint x="1585" y="140"/>
+        <di:waypoint x="1650" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CRMVD_No_di" bpmnElement="Flow_CRMVD_No">
+        <di:waypoint x="1610" y="300"/>
+        <di:waypoint x="1830" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SaveAttach_to_CheckInspectors_di" bpmnElement="Flow_SaveAttach_to_CheckInspectors">
+        <di:waypoint x="1750" y="140"/>
+        <di:waypoint x="1855" y="140"/>
+        <di:waypoint x="1855" y="275"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HasInspectors_Yes_di" bpmnElement="Flow_HasInspectors_Yes">
+        <di:waypoint x="1855" y="325"/>
+        <di:waypoint x="1855" y="450"/>
+        <di:waypoint x="1920" y="450"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HasInspectors_No_di" bpmnElement="Flow_HasInspectors_No">
+        <di:waypoint x="1855" y="275"/>
+        <di:waypoint x="1855" y="140"/>
+        <di:waypoint x="1920" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Reassign_to_End_di" bpmnElement="Flow_Reassign_to_End">
+        <di:waypoint x="2020" y="140"/>
+        <di:waypoint x="3608" y="140"/>
+        <di:waypoint x="3608" y="282"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RiskDispatch_Yes_di" bpmnElement="Flow_RiskDispatch_Yes">
+        <di:waypoint x="1970" y="450"/>
+        <di:waypoint x="2020" y="450"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RiskDispatch_No_di" bpmnElement="Flow_RiskDispatch_No">
+        <di:waypoint x="1945" y="425"/>
+        <di:waypoint x="1945" y="380"/>
+        <di:waypoint x="2230" y="380"/>
+        <di:waypoint x="2230" y="340"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_RiskDispatch_to_EnterClauses_di" bpmnElement="Flow_RiskDispatch_to_EnterClauses">
+        <di:waypoint x="2120" y="450"/>
+        <di:waypoint x="2230" y="450"/>
+        <di:waypoint x="2230" y="340"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_EnterClauses_to_HasFailed_di" bpmnElement="Flow_EnterClauses_to_HasFailed">
+        <di:waypoint x="2280" y="300"/>
+        <di:waypoint x="2340" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Failed_Yes_di" bpmnElement="Flow_Failed_Yes">
+        <di:waypoint x="2365" y="325"/>
+        <di:waypoint x="2365" y="450"/>
+        <di:waypoint x="2430" y="450"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Failed_No_di" bpmnElement="Flow_Failed_No">
+        <di:waypoint x="2390" y="300"/>
+        <di:waypoint x="2990" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FetchEstb_to_HasPM_di" bpmnElement="Flow_FetchEstb_to_HasPM">
+        <di:waypoint x="2530" y="450"/>
+        <di:waypoint x="2590" y="450"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HasPM_Yes_di" bpmnElement="Flow_HasPM_Yes">
+        <di:waypoint x="2640" y="450"/>
+        <di:waypoint x="2680" y="450"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_HasPM_No_di" bpmnElement="Flow_HasPM_No">
+        <di:waypoint x="2615" y="475"/>
+        <di:waypoint x="2615" y="560"/>
+        <di:waypoint x="2880" y="560"/>
+        <di:waypoint x="2880" y="490"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PM_to_ClosingAndReopen_di" bpmnElement="Flow_PM_to_ClosingAndReopen">
+        <di:waypoint x="2780" y="450"/>
+        <di:waypoint x="2830" y="450"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ClosingAndReopen_to_PerformDecision_di" bpmnElement="Flow_ClosingAndReopen_to_PerformDecision">
+        <di:waypoint x="2930" y="450"/>
+        <di:waypoint x="3040" y="450"/>
+        <di:waypoint x="3040" y="340"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PerformDecision_to_UpdateTable_di" bpmnElement="Flow_PerformDecision_to_UpdateTable">
+        <di:waypoint x="3090" y="300"/>
+        <di:waypoint x="3140" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_UpdateTable_to_QualityCheck_di" bpmnElement="Flow_UpdateTable_to_QualityCheck">
+        <di:waypoint x="3240" y="300"/>
+        <di:waypoint x="3300" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Quality_Yes_di" bpmnElement="Flow_Quality_Yes">
+        <di:waypoint x="3325" y="275"/>
+        <di:waypoint x="3325" y="140"/>
+        <di:waypoint x="3390" y="140"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Quality_No_di" bpmnElement="Flow_Quality_No">
+        <di:waypoint x="3350" y="300"/>
+        <di:waypoint x="3590" y="300"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ChangeStage_to_End_di" bpmnElement="Flow_ChangeStage_to_End">
+        <di:waypoint x="3490" y="140"/>
+        <di:waypoint x="3608" y="140"/>
+        <di:waypoint x="3608" y="282"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

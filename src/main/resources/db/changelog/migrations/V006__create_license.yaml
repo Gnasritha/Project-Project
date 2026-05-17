@@ -1,0 +1,81 @@
+##############################################################################
+#  V006 — Create LICENSE table
+#  Depends on: V005 (establishment)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V006-create-license
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: license_license_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: license
+            remarks: "A license issued to an establishment authorising it to operate"
+            columns:
+
+              - column:
+                  name: license_id
+                  type: BIGINT
+                  defaultValueSequenceNext: license_license_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_license
+                    nullable: false
+
+              - column:
+                  name: license_number
+                  type: VARCHAR(100)
+                  remarks: "Business-facing unique license reference (UK)"
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_license_number
+
+              - column:
+                  name: establishment_id
+                  type: BIGINT
+                  remarks: "FK → establishment.establishment_id"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: issue_date
+                  type: DATE
+
+              - column:
+                  name: expiry_date
+                  type: DATE
+
+              - column:
+                  name: license_status
+                  type: VARCHAR(50)
+                  remarks: "ACTIVE | EXPIRED | SUSPENDED | REVOKED"
+
+        # ── Foreign key: license → establishment ─────────────────────────
+        - addForeignKeyConstraint:
+            baseTableName: license
+            baseColumnNames: establishment_id
+            referencedTableName: establishment
+            referencedColumnNames: establishment_id
+            constraintName: fk_license_establishment
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+
+        - createIndex:
+            tableName: license
+            indexName: idx_license_establishment_id
+            columns:
+              - column:
+                  name: establishment_id
+
+      rollback:
+        - dropTable:
+            tableName: license
+        - dropSequence:
+            sequenceName: license_license_id_seq

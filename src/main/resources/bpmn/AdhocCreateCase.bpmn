@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:zeebe="http://camunda.org/schema/zeebe/1.0"
+                  xmlns:modeler="http://camunda.org/schema/modeler/1.0"
+                  id="Definitions_AdhocCreateCase"
+                  targetNamespace="http://aaseya.com/bpmn/momthathel"
+                  modeler:executionPlatform="Camunda Cloud"
+                  modeler:executionPlatformVersion="8.9.0">
+
+  <bpmn:process id="AdhocCreateCase" name="Adhoc Create Case (license capture)" isExecutable="true">
+
+    <bpmn:startEvent id="StartEvent_Adhoc" name="Start Adhoc">
+      <bpmn:outgoing>Flow_Adhoc_Start_to_FieldSurvey</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <bpmn:serviceTask id="Task_FieldSurveySubTaskFlow" name="Field Survey Sub-Task">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="field-survey-subtask"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Adhoc_Start_to_FieldSurvey</bpmn:incoming>
+      <bpmn:outgoing>Flow_FieldSurvey_to_CheckSurvey</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_CheckingFieldSurvey" name="Checking Field Survey">
+      <bpmn:incoming>Flow_FieldSurvey_to_CheckSurvey</bpmn:incoming>
+      <bpmn:outgoing>Flow_FieldSurvey_Else</bpmn:outgoing>
+      <bpmn:outgoing>Flow_FieldSurvey_Yes</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_IsFromAdhocVD" name="From Adhoc VD?">
+      <bpmn:incoming>Flow_FieldSurvey_Else</bpmn:incoming>
+      <bpmn:outgoing>Flow_AdhocVD_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AdhocVD_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_IsCRMIncidentCommercial" name="CRM Incident for Commercial?">
+      <bpmn:incoming>Flow_AdhocVD_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_CRMIncident_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_CRMIncident_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_IsAdhocManualAssign" name="Adhoc Manual Assign?">
+      <bpmn:incoming>Flow_CRMIncident_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_AdhocManual_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_AdhocManual_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_IsManualAssignAdhoc" name="Manual Assign Adhoc?">
+      <bpmn:incoming>Flow_AdhocManual_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_ManualAssign_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ManualAssign_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:userTask id="UserTask_CaptureLicenseInfo" name="Capture License Info / No License Info">
+      <bpmn:extensionElements>
+        <zeebe:assignmentDefinition assignee="=inspectorUsername"/>
+        <zeebe:formDefinition formId="captureLicenseForm"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_AdhocVD_Yes</bpmn:incoming>
+      <bpmn:incoming>Flow_CRMIncident_Yes</bpmn:incoming>
+      <bpmn:incoming>Flow_AdhocManual_Yes</bpmn:incoming>
+      <bpmn:incoming>Flow_ManualAssign_Yes</bpmn:incoming>
+      <bpmn:incoming>Flow_ManualAssign_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_CaptureLicense_to_IsSPCVisit</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:exclusiveGateway id="Gateway_IsSPCVisit" name="Is SPC Visit?">
+      <bpmn:incoming>Flow_CaptureLicense_to_IsSPCVisit</bpmn:incoming>
+      <bpmn:outgoing>Flow_SPC_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_SPC_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_SPCInspectionFlow" name="SPC Inspection Flow">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="spc-inspection-flow"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_SPC_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_SPC_to_PersistCase1</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_PersistCase1" name="Persist Case (SPC)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="persist-inspection-case"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_SPC_to_PersistCase1</bpmn:incoming>
+      <bpmn:outgoing>Flow_Persist1_to_CaptureBusiness</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_CaptureBusinessConfigurations" name="Capture Business Configurations">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="capture-business-configurations"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Persist1_to_CaptureBusiness</bpmn:incoming>
+      <bpmn:outgoing>Flow_CaptureBusiness_to_PerformDecision</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_LicenseExist" name="License Exist?">
+      <bpmn:incoming>Flow_SPC_No</bpmn:incoming>
+      <bpmn:outgoing>Flow_License_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_License_No</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:exclusiveGateway id="Gateway_ComplianceCertificate" name="Compliance Certificate?">
+      <bpmn:incoming>Flow_License_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_ComplianceCert_Exist</bpmn:outgoing>
+      <bpmn:outgoing>Flow_ComplianceCert_NotExist</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_PersistCase2" name="Persist Case (Compliance Cert)">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="persist-inspection-case"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_ComplianceCert_Exist</bpmn:incoming>
+      <bpmn:outgoing>Flow_Persist2_to_SaveAttachments</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_SaveAttachmentsForCommercial" name="Save Attachments For Commercial">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="save-attachments-for-commercial"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Persist2_to_SaveAttachments</bpmn:incoming>
+      <bpmn:incoming>Flow_ComplianceCert_NotExist</bpmn:incoming>
+      <bpmn:outgoing>Flow_SaveAttachments_to_IsCommercial</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:exclusiveGateway id="Gateway_IsCommercialWithLicense" name="Commercial With License?">
+      <bpmn:incoming>Flow_SaveAttachments_to_IsCommercial</bpmn:incoming>
+      <bpmn:outgoing>Flow_Commercial_Yes</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Commercial_Else</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+
+    <bpmn:serviceTask id="Task_CommercialWithLicense" name="Commercial With License">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="commercial-with-license"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_Commercial_Yes</bpmn:incoming>
+      <bpmn:outgoing>Flow_Commercial_to_PerformDecision</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:serviceTask id="Task_PerformInspectorDecision" name="Perform Inspector Decision">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="perform-inspector-decision"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_License_No</bpmn:incoming>
+      <bpmn:incoming>Flow_FieldSurvey_Yes</bpmn:incoming>
+      <bpmn:incoming>Flow_Commercial_Yes_via_PerformDecision</bpmn:incoming>
+      <bpmn:incoming>Flow_Commercial_Else</bpmn:incoming>
+      <bpmn:incoming>Flow_Commercial_to_PerformDecision</bpmn:incoming>
+      <bpmn:incoming>Flow_CaptureBusiness_to_PerformDecision</bpmn:incoming>
+      <bpmn:outgoing>Flow_PerformDecision_to_End</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="EndEvent_Adhoc" name="End Adhoc Case">
+      <bpmn:incoming>Flow_PerformDecision_to_End</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Sequence flows -->
+    <bpmn:sequenceFlow id="Flow_Adhoc_Start_to_FieldSurvey" sourceRef="StartEvent_Adhoc" targetRef="Task_FieldSurveySubTaskFlow"/>
+    <bpmn:sequenceFlow id="Flow_FieldSurvey_to_CheckSurvey" sourceRef="Task_FieldSurveySubTaskFlow" targetRef="Gateway_CheckingFieldSurvey"/>
+
+    <bpmn:sequenceFlow id="Flow_FieldSurvey_Yes" name="Field Survey" sourceRef="Gateway_CheckingFieldSurvey" targetRef="Task_PerformInspectorDecision">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isFieldSurvey = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_FieldSurvey_Else" name="Else" sourceRef="Gateway_CheckingFieldSurvey" targetRef="Gateway_IsFromAdhocVD">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isFieldSurvey != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_AdhocVD_Yes" name="Yes" sourceRef="Gateway_IsFromAdhocVD" targetRef="UserTask_CaptureLicenseInfo">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isFromAdhocVD = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_AdhocVD_No" name="No" sourceRef="Gateway_IsFromAdhocVD" targetRef="Gateway_IsCRMIncidentCommercial">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isFromAdhocVD != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_CRMIncident_Yes" name="Yes" sourceRef="Gateway_IsCRMIncidentCommercial" targetRef="UserTask_CaptureLicenseInfo">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCRMIncidentForCommercial = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_CRMIncident_No" name="No" sourceRef="Gateway_IsCRMIncidentCommercial" targetRef="Gateway_IsAdhocManualAssign">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCRMIncidentForCommercial != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_AdhocManual_Yes" name="Yes" sourceRef="Gateway_IsAdhocManualAssign" targetRef="UserTask_CaptureLicenseInfo">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isAdhocManualAssign = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_AdhocManual_No" name="No" sourceRef="Gateway_IsAdhocManualAssign" targetRef="Gateway_IsManualAssignAdhoc">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isAdhocManualAssign != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_ManualAssign_Yes" name="Yes" sourceRef="Gateway_IsManualAssignAdhoc" targetRef="UserTask_CaptureLicenseInfo">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isManualAssignAdhocCase = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ManualAssign_No" name="No" sourceRef="Gateway_IsManualAssignAdhoc" targetRef="UserTask_CaptureLicenseInfo">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isManualAssignAdhocCase != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_CaptureLicense_to_IsSPCVisit" sourceRef="UserTask_CaptureLicenseInfo" targetRef="Gateway_IsSPCVisit"/>
+
+    <bpmn:sequenceFlow id="Flow_SPC_Yes" name="Yes" sourceRef="Gateway_IsSPCVisit" targetRef="Task_SPCInspectionFlow">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isSPCVisit = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_SPC_No" name="No" sourceRef="Gateway_IsSPCVisit" targetRef="Gateway_LicenseExist">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isSPCVisit != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_SPC_to_PersistCase1" sourceRef="Task_SPCInspectionFlow" targetRef="Task_PersistCase1"/>
+    <bpmn:sequenceFlow id="Flow_Persist1_to_CaptureBusiness" sourceRef="Task_PersistCase1" targetRef="Task_CaptureBusinessConfigurations"/>
+    <bpmn:sequenceFlow id="Flow_CaptureBusiness_to_PerformDecision" sourceRef="Task_CaptureBusinessConfigurations" targetRef="Task_PerformInspectorDecision"/>
+
+    <bpmn:sequenceFlow id="Flow_License_Yes" name="Exists" sourceRef="Gateway_LicenseExist" targetRef="Gateway_ComplianceCertificate">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=licenseExists = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_License_No" name="Not Exist" sourceRef="Gateway_LicenseExist" targetRef="Task_PerformInspectorDecision">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=licenseExists != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_ComplianceCert_Exist" name="Exist" sourceRef="Gateway_ComplianceCertificate" targetRef="Task_PersistCase2">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=complianceCertificateExists = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_ComplianceCert_NotExist" name="Not Exist" sourceRef="Gateway_ComplianceCertificate" targetRef="Task_SaveAttachmentsForCommercial">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=complianceCertificateExists != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_Persist2_to_SaveAttachments" sourceRef="Task_PersistCase2" targetRef="Task_SaveAttachmentsForCommercial"/>
+    <bpmn:sequenceFlow id="Flow_SaveAttachments_to_IsCommercial" sourceRef="Task_SaveAttachmentsForCommercial" targetRef="Gateway_IsCommercialWithLicense"/>
+
+    <bpmn:sequenceFlow id="Flow_Commercial_Yes" name="Yes" sourceRef="Gateway_IsCommercialWithLicense" targetRef="Task_CommercialWithLicense">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCommercialWithLicense = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Commercial_Else" name="Else" sourceRef="Gateway_IsCommercialWithLicense" targetRef="Task_PerformInspectorDecision">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=isCommercialWithLicense != true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_Commercial_to_PerformDecision" sourceRef="Task_CommercialWithLicense" targetRef="Task_PerformInspectorDecision"/>
+    <bpmn:sequenceFlow id="Flow_Commercial_Yes_via_PerformDecision" sourceRef="Gateway_IsCommercialWithLicense" targetRef="Task_PerformInspectorDecision">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=false</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+
+    <bpmn:sequenceFlow id="Flow_PerformDecision_to_End" sourceRef="Task_PerformInspectorDecision" targetRef="EndEvent_Adhoc"/>
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                      xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                      xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                      id="BPMNDiagram_AdhocCreateCase">
+    <bpmndi:BPMNPlane id="BPMNPlane_AdhocCreateCase" bpmnElement="AdhocCreateCase">
+
+      <bpmndi:BPMNShape id="StartEvent_Adhoc_di" bpmnElement="StartEvent_Adhoc">
+        <dc:Bounds x="160" y="182" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_FieldSurveySubTaskFlow_di" bpmnElement="Task_FieldSurveySubTaskFlow">
+        <dc:Bounds x="240" y="160" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_CheckingFieldSurvey_di" bpmnElement="Gateway_CheckingFieldSurvey" isMarkerVisible="true">
+        <dc:Bounds x="400" y="175" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsFromAdhocVD_di" bpmnElement="Gateway_IsFromAdhocVD" isMarkerVisible="true">
+        <dc:Bounds x="500" y="175" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsCRMIncidentCommercial_di" bpmnElement="Gateway_IsCRMIncidentCommercial" isMarkerVisible="true">
+        <dc:Bounds x="600" y="175" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsAdhocManualAssign_di" bpmnElement="Gateway_IsAdhocManualAssign" isMarkerVisible="true">
+        <dc:Bounds x="700" y="175" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsManualAssignAdhoc_di" bpmnElement="Gateway_IsManualAssignAdhoc" isMarkerVisible="true">
+        <dc:Bounds x="800" y="175" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_CaptureLicenseInfo_di" bpmnElement="UserTask_CaptureLicenseInfo">
+        <dc:Bounds x="900" y="160" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsSPCVisit_di" bpmnElement="Gateway_IsSPCVisit" isMarkerVisible="true">
+        <dc:Bounds x="1060" y="175" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SPCInspectionFlow_di" bpmnElement="Task_SPCInspectionFlow">
+        <dc:Bounds x="1160" y="20" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PersistCase1_di" bpmnElement="Task_PersistCase1">
+        <dc:Bounds x="1310" y="20" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CaptureBusinessConfigurations_di" bpmnElement="Task_CaptureBusinessConfigurations">
+        <dc:Bounds x="1460" y="20" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_LicenseExist_di" bpmnElement="Gateway_LicenseExist" isMarkerVisible="true">
+        <dc:Bounds x="1160" y="345" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_ComplianceCertificate_di" bpmnElement="Gateway_ComplianceCertificate" isMarkerVisible="true">
+        <dc:Bounds x="1280" y="345" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PersistCase2_di" bpmnElement="Task_PersistCase2">
+        <dc:Bounds x="1380" y="330" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_SaveAttachmentsForCommercial_di" bpmnElement="Task_SaveAttachmentsForCommercial">
+        <dc:Bounds x="1540" y="330" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_IsCommercialWithLicense_di" bpmnElement="Gateway_IsCommercialWithLicense" isMarkerVisible="true">
+        <dc:Bounds x="1700" y="345" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_CommercialWithLicense_di" bpmnElement="Task_CommercialWithLicense">
+        <dc:Bounds x="1800" y="330" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_PerformInspectorDecision_di" bpmnElement="Task_PerformInspectorDecision">
+        <dc:Bounds x="1980" y="160" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Adhoc_di" bpmnElement="EndEvent_Adhoc">
+        <dc:Bounds x="2150" y="182" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_Adhoc_Start_to_FieldSurvey_di" bpmnElement="Flow_Adhoc_Start_to_FieldSurvey">
+        <di:waypoint x="196" y="200"/>
+        <di:waypoint x="240" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FieldSurvey_to_CheckSurvey_di" bpmnElement="Flow_FieldSurvey_to_CheckSurvey">
+        <di:waypoint x="340" y="200"/>
+        <di:waypoint x="400" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FieldSurvey_Yes_di" bpmnElement="Flow_FieldSurvey_Yes">
+        <di:waypoint x="425" y="175"/>
+        <di:waypoint x="425" y="100"/>
+        <di:waypoint x="2030" y="100"/>
+        <di:waypoint x="2030" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_FieldSurvey_Else_di" bpmnElement="Flow_FieldSurvey_Else">
+        <di:waypoint x="450" y="200"/>
+        <di:waypoint x="500" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdhocVD_Yes_di" bpmnElement="Flow_AdhocVD_Yes">
+        <di:waypoint x="525" y="175"/>
+        <di:waypoint x="525" y="130"/>
+        <di:waypoint x="950" y="130"/>
+        <di:waypoint x="950" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdhocVD_No_di" bpmnElement="Flow_AdhocVD_No">
+        <di:waypoint x="550" y="200"/>
+        <di:waypoint x="600" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CRMIncident_Yes_di" bpmnElement="Flow_CRMIncident_Yes">
+        <di:waypoint x="625" y="175"/>
+        <di:waypoint x="625" y="135"/>
+        <di:waypoint x="950" y="135"/>
+        <di:waypoint x="950" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CRMIncident_No_di" bpmnElement="Flow_CRMIncident_No">
+        <di:waypoint x="650" y="200"/>
+        <di:waypoint x="700" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdhocManual_Yes_di" bpmnElement="Flow_AdhocManual_Yes">
+        <di:waypoint x="725" y="175"/>
+        <di:waypoint x="725" y="140"/>
+        <di:waypoint x="950" y="140"/>
+        <di:waypoint x="950" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_AdhocManual_No_di" bpmnElement="Flow_AdhocManual_No">
+        <di:waypoint x="750" y="200"/>
+        <di:waypoint x="800" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManualAssign_Yes_di" bpmnElement="Flow_ManualAssign_Yes">
+        <di:waypoint x="825" y="175"/>
+        <di:waypoint x="825" y="145"/>
+        <di:waypoint x="950" y="145"/>
+        <di:waypoint x="950" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ManualAssign_No_di" bpmnElement="Flow_ManualAssign_No">
+        <di:waypoint x="825" y="225"/>
+        <di:waypoint x="825" y="260"/>
+        <di:waypoint x="950" y="260"/>
+        <di:waypoint x="950" y="240"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CaptureLicense_to_IsSPCVisit_di" bpmnElement="Flow_CaptureLicense_to_IsSPCVisit">
+        <di:waypoint x="1000" y="200"/>
+        <di:waypoint x="1060" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SPC_Yes_di" bpmnElement="Flow_SPC_Yes">
+        <di:waypoint x="1085" y="175"/>
+        <di:waypoint x="1085" y="60"/>
+        <di:waypoint x="1160" y="60"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SPC_No_di" bpmnElement="Flow_SPC_No">
+        <di:waypoint x="1085" y="225"/>
+        <di:waypoint x="1085" y="370"/>
+        <di:waypoint x="1160" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SPC_to_PersistCase1_di" bpmnElement="Flow_SPC_to_PersistCase1">
+        <di:waypoint x="1260" y="60"/>
+        <di:waypoint x="1310" y="60"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Persist1_to_CaptureBusiness_di" bpmnElement="Flow_Persist1_to_CaptureBusiness">
+        <di:waypoint x="1410" y="60"/>
+        <di:waypoint x="1460" y="60"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_CaptureBusiness_to_PerformDecision_di" bpmnElement="Flow_CaptureBusiness_to_PerformDecision">
+        <di:waypoint x="1560" y="60"/>
+        <di:waypoint x="2030" y="60"/>
+        <di:waypoint x="2030" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_License_Yes_di" bpmnElement="Flow_License_Yes">
+        <di:waypoint x="1210" y="370"/>
+        <di:waypoint x="1280" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_License_No_di" bpmnElement="Flow_License_No">
+        <di:waypoint x="1185" y="395"/>
+        <di:waypoint x="1185" y="470"/>
+        <di:waypoint x="2030" y="470"/>
+        <di:waypoint x="2030" y="240"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ComplianceCert_Exist_di" bpmnElement="Flow_ComplianceCert_Exist">
+        <di:waypoint x="1330" y="370"/>
+        <di:waypoint x="1380" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_ComplianceCert_NotExist_di" bpmnElement="Flow_ComplianceCert_NotExist">
+        <di:waypoint x="1305" y="395"/>
+        <di:waypoint x="1305" y="450"/>
+        <di:waypoint x="1590" y="450"/>
+        <di:waypoint x="1590" y="410"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Persist2_to_SaveAttachments_di" bpmnElement="Flow_Persist2_to_SaveAttachments">
+        <di:waypoint x="1480" y="370"/>
+        <di:waypoint x="1540" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_SaveAttachments_to_IsCommercial_di" bpmnElement="Flow_SaveAttachments_to_IsCommercial">
+        <di:waypoint x="1640" y="370"/>
+        <di:waypoint x="1700" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Commercial_Yes_di" bpmnElement="Flow_Commercial_Yes">
+        <di:waypoint x="1750" y="370"/>
+        <di:waypoint x="1800" y="370"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Commercial_Else_di" bpmnElement="Flow_Commercial_Else">
+        <di:waypoint x="1725" y="345"/>
+        <di:waypoint x="1725" y="200"/>
+        <di:waypoint x="1980" y="200"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Commercial_to_PerformDecision_di" bpmnElement="Flow_Commercial_to_PerformDecision">
+        <di:waypoint x="1900" y="370"/>
+        <di:waypoint x="2030" y="370"/>
+        <di:waypoint x="2030" y="240"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Commercial_Yes_via_PerformDecision_di" bpmnElement="Flow_Commercial_Yes_via_PerformDecision">
+        <di:waypoint x="1725" y="345"/>
+        <di:waypoint x="1725" y="220"/>
+        <di:waypoint x="1980" y="220"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_PerformDecision_to_End_di" bpmnElement="Flow_PerformDecision_to_End">
+        <di:waypoint x="2080" y="200"/>
+        <di:waypoint x="2150" y="200"/>
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn:definitions>

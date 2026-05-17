@@ -1,0 +1,55 @@
+##############################################################################
+#  V002 — Create INSPECTION_TYPE table
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V002-create-inspection-type
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: inspection_type_inspection_type_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: inspection_type
+            remarks: "Defines the category of an inspection (e.g. Fire Safety, Food Hygiene)"
+            columns:
+
+              - column:
+                  name: inspection_type_id
+                  type: BIGINT
+                  defaultValueSequenceNext: inspection_type_inspection_type_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_inspection_type
+                    nullable: false
+
+              - column:
+                  name: inspection_name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: inspection_code
+                  type: VARCHAR(50)
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: uk_inspection_type_code
+
+              - column:
+                  name: active
+                  type: BOOLEAN
+                  defaultValueBoolean: true
+                  constraints:
+                    nullable: false
+
+      rollback:
+        - dropTable:
+            tableName: inspection_type
+        - dropSequence:
+            sequenceName: inspection_type_inspection_type_id_seq

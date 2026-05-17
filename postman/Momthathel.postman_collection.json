@@ -1,0 +1,395 @@
+{
+  "info": {
+    "name": "Momthathel — Inspection Solution Modernization",
+    "description": "Mobile inspection backend covering all ISM-1 → ISM-8 stories. Use the bundled environment (Momthathel.postman_environment.json) so {{baseUrl}}, {{authToken}}, {{inspectionId}}, etc. resolve automatically. Run requests top-to-bottom for the full flow.",
+    "_postman_id": "momthathel-api-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8989" }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "1.1 Login (username + password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.authToken) {",
+                  "    pm.environment.set('authToken', body.authToken);",
+                  "    pm.collectionVariables.set('authToken', body.authToken);",
+                  "    console.log('Saved authToken:', body.authToken);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"inspector01\",\n  \"password\": \"Password@123\",\n  \"language\": \"en\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Single-step login. The AuthInitializer sets inspector01's password to 'Password@123' on first app boot (replacing the dummy hash from seed-data.sql). On success the Test script auto-saves the returned authToken into the environment."
+          }
+        },
+        {
+          "name": "1.2 Get Current User (/me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "1.3 Logout (do last!)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Inspection Visits (ISM-3, ISM-5)",
+      "item": [
+        {
+          "name": "2.1 Get Authorised Inspection Types",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/inspection-types?inspectorId={{inspectorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "inspection-types"],
+              "query": [{ "key": "inspectorId", "value": "{{inspectorId}}" }]
+            }
+          }
+        },
+        {
+          "name": "2.2 Verify Real License",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseNumber\": \"{{licenseNumber}}\",\n  \"entryMethod\": \"LICENSE_NUMBER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/verify-license",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "verify-license"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Verify Invalid License (ISM-5 error path)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"licenseNumber\": \"DOES-NOT-EXIST\",\n  \"entryMethod\": \"LICENSE_NUMBER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/verify-license",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "verify-license"]
+            }
+          }
+        },
+        {
+          "name": "2.4 Create Visit (with license)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.inspectionId) {",
+                  "    pm.environment.set('inspectionId', body.inspectionId);",
+                  "    pm.collectionVariables.set('inspectionId', body.inspectionId);",
+                  "    console.log('Saved inspectionId:', body.inspectionId);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inspectionNumber\": \"INS-2026-{{$timestamp}}\",\n  \"inspectionTypeId\": 3,\n  \"establishmentId\": {{establishmentId}},\n  \"licenseId\": {{licenseId}},\n  \"licenseAvailable\": true,\n  \"licenseEntryMethod\": \"LICENSE_NUMBER\",\n  \"inspectionMode\": \"ON_SITE\",\n  \"inspectionDate\": \"2026-05-15T09:00:00\",\n  \"latitude\": 24.7136,\n  \"longitude\": 46.6753,\n  \"familyRelationshipDisclosed\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits?inspectorId={{inspectorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits"],
+              "query": [{ "key": "inspectorId", "value": "{{inspectorId}}" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. ISIC Activities + No-License Visit (ISM-4)",
+      "item": [
+        {
+          "name": "3.1 Top-Level ISIC Categories",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/isic-activities",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "isic-activities"]
+            }
+          }
+        },
+        {
+          "name": "3.2 Detail Activities under Food & Beverage (id=1)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/isic-activities/1/details",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "isic-activities", "1", "details"]
+            }
+          }
+        },
+        {
+          "name": "3.3 Create Facility (no-license map pin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facilityName\": \"Cafe Al-Nakheel\",\n  \"location\": \"Olaya Street, Block 7\",\n  \"city\": \"Riyadh\",\n  \"latitude\": 24.71,\n  \"longitude\": 46.68,\n  \"isicId\": 1,\n  \"isicDetailId\": 11\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/facility",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "facility"]
+            }
+          }
+        },
+        {
+          "name": "3.4 No-License Visit (facility + visit in one shot)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inspectionNumber\": \"INS-NL-{{$timestamp}}\",\n  \"inspectionTypeId\": 3,\n  \"inspectionMode\": \"ON_SITE\",\n  \"facility\": {\n    \"facilityName\": \"Pop-up Food Truck\",\n    \"location\": \"Olaya Park\",\n    \"city\": \"Riyadh\",\n    \"latitude\": 24.712,\n    \"longitude\": 46.67,\n    \"isicId\": 1,\n    \"isicDetailId\": 11\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/no-license?inspectorId={{inspectorId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "no-license"],
+              "query": [{ "key": "inspectorId", "value": "{{inspectorId}}" }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Attachments (ISM-6)",
+      "item": [
+        {
+          "name": "4.1 Upload Attachment (multipart form-data)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.attachmentId) {",
+                  "    pm.environment.set('attachmentId', body.attachmentId);",
+                  "    pm.collectionVariables.set('attachmentId', body.attachmentId);",
+                  "    console.log('Saved attachmentId:', body.attachmentId);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Pick any image or PDF from your machine."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/{{inspectionId}}/attachments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "{{inspectionId}}", "attachments"]
+            }
+          }
+        },
+        {
+          "name": "4.2 List Attachments",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/{{inspectionId}}/attachments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "{{inspectionId}}", "attachments"]
+            }
+          }
+        },
+        {
+          "name": "4.3 Validate Mandatory Rule",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/{{inspectionId}}/attachments/validate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "{{inspectionId}}", "attachments", "validate"]
+            }
+          }
+        },
+        {
+          "name": "4.4 Delete Attachment",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/{{inspectionId}}/attachments/{{attachmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "{{inspectionId}}", "attachments", "{{attachmentId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Clauses + Violations (ISM-7, ISM-8)",
+      "item": [
+        {
+          "name": "5.1 List All Clauses",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/clauses",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "clauses"]
+            }
+          }
+        },
+        {
+          "name": "5.2 Add Violation to Current Inspection",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.violationId) {",
+                  "    pm.environment.set('violationId', body.violationId);",
+                  "    pm.collectionVariables.set('violationId', body.violationId);",
+                  "    console.log('Saved violationId:', body.violationId);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clauseId\": 3,\n  \"severity\": \"HIGH\",\n  \"violationDescription\": \"Walk-in chiller temperature exceeded 8 degC during inspection\",\n  \"correctiveAction\": \"Repair compressor and re-inspect within 14 days\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/{{inspectionId}}/violations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "{{inspectionId}}", "violations"]
+            }
+          }
+        },
+        {
+          "name": "5.3 List Violations on Current Inspection",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/{{inspectionId}}/violations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "{{inspectionId}}", "violations"]
+            }
+          }
+        },
+        {
+          "name": "5.4 Previous Violations for License (ISM-7)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/licenses/{{licenseNumber}}/previous-violations",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "licenses", "{{licenseNumber}}", "previous-violations"]
+            }
+          }
+        },
+        {
+          "name": "5.5 Previous Violations (exclude current inspection)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/licenses/{{licenseNumber}}/previous-violations?excludeInspectionId={{inspectionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "licenses", "{{licenseNumber}}", "previous-violations"],
+              "query": [{ "key": "excludeInspectionId", "value": "{{inspectionId}}" }]
+            }
+          }
+        },
+        {
+          "name": "5.6 Delete Violation",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/mobile/visits/{{inspectionId}}/violations/{{violationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "mobile", "visits", "{{inspectionId}}", "violations", "{{violationId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

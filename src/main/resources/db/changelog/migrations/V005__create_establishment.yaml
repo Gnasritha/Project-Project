@@ -1,0 +1,83 @@
+##############################################################################
+#  V005 — Create ESTABLISHMENT table
+#  Depends on: V002 (inspection_type)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V005-create-establishment
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: establishment_establishment_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: establishment
+            remarks: "A physical business premise subject to inspection"
+            columns:
+
+              - column:
+                  name: establishment_id
+                  type: BIGINT
+                  defaultValueSequenceNext: establishment_establishment_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_establishment
+                    nullable: false
+
+              - column:
+                  name: establishment_name
+                  type: VARCHAR(300)
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: activity_type
+                  type: VARCHAR(200)
+
+              - column:
+                  name: address
+                  type: VARCHAR(500)
+
+              - column:
+                  name: city
+                  type: VARCHAR(100)
+
+              - column:
+                  name: latitude
+                  type: DOUBLE PRECISION
+
+              - column:
+                  name: longitude
+                  type: DOUBLE PRECISION
+
+              - column:
+                  name: inspection_type_id
+                  type: BIGINT
+                  remarks: "FK → inspection_type.inspection_type_id"
+
+        # ── Foreign key: establishment → inspection_type ───────────────────
+        - addForeignKeyConstraint:
+            baseTableName: establishment
+            baseColumnNames: inspection_type_id
+            referencedTableName: inspection_type
+            referencedColumnNames: inspection_type_id
+            constraintName: fk_establishment_inspection_type
+            onDelete: SET NULL
+            onUpdate: CASCADE
+
+        - createIndex:
+            tableName: establishment
+            indexName: idx_establishment_inspection_type_id
+            columns:
+              - column:
+                  name: inspection_type_id
+
+      rollback:
+        - dropTable:
+            tableName: establishment
+        - dropSequence:
+            sequenceName: establishment_establishment_id_seq

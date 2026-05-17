@@ -1,0 +1,96 @@
+##############################################################################
+#  V009 — Create INSPECTION_VIOLATION table
+#  Depends on: V007 (inspection_case), V003 (clause)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V009-create-inspection-violation
+      author: aaseya
+      changes:
+
+        - createSequence:
+            sequenceName: inspection_violation_violation_id_seq
+            startValue: 1
+            incrementBy: 1
+
+        - createTable:
+            tableName: inspection_violation
+            remarks: "Records a specific regulatory clause violation found during an inspection"
+            columns:
+
+              - column:
+                  name: violation_id
+                  type: BIGINT
+                  defaultValueSequenceNext: inspection_violation_violation_id_seq
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_inspection_violation
+                    nullable: false
+
+              - column:
+                  name: inspection_id
+                  type: BIGINT
+                  remarks: "FK → inspection_case.inspection_id"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: clause_id
+                  type: BIGINT
+                  remarks: "FK → clause.clause_id"
+                  constraints:
+                    nullable: false
+
+              - column:
+                  name: violation_description
+                  type: TEXT
+
+              - column:
+                  name: severity
+                  type: VARCHAR(50)
+                  remarks: "Observed severity: LOW | MEDIUM | HIGH | CRITICAL"
+
+              - column:
+                  name: corrective_action
+                  type: TEXT
+
+        # ── Foreign keys ──────────────────────────────────────────────────
+        - addForeignKeyConstraint:
+            baseTableName: inspection_violation
+            baseColumnNames: inspection_id
+            referencedTableName: inspection_case
+            referencedColumnNames: inspection_id
+            constraintName: fk_violation_inspection
+            onDelete: CASCADE
+            onUpdate: CASCADE
+
+        - addForeignKeyConstraint:
+            baseTableName: inspection_violation
+            baseColumnNames: clause_id
+            referencedTableName: clause
+            referencedColumnNames: clause_id
+            constraintName: fk_violation_clause
+            onDelete: RESTRICT
+            onUpdate: CASCADE
+
+        # ── Indexes ───────────────────────────────────────────────────────
+        - createIndex:
+            tableName: inspection_violation
+            indexName: idx_inspection_violation_inspection_id
+            columns:
+              - column:
+                  name: inspection_id
+
+        - createIndex:
+            tableName: inspection_violation
+            indexName: idx_inspection_violation_clause_id
+            columns:
+              - column:
+                  name: clause_id
+
+      rollback:
+        - dropTable:
+            tableName: inspection_violation
+        - dropSequence:
+            sequenceName: inspection_violation_violation_id_seq

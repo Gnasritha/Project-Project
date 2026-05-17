@@ -1,0 +1,52 @@
+##############################################################################
+#  V013 — Add auth_token columns to USERS table
+#  Supports ISM-2: API-generated token login flow for mobile app
+#  Depends on: V004 (users)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V013-add-auth-token-columns
+      author: aaseya
+      changes:
+
+        - addColumn:
+            tableName: users
+            columns:
+
+              - column:
+                  name: auth_token
+                  type: VARCHAR(512)
+                  remarks: "API-generated opaque token used for mobile-app login (ISM-2)"
+
+              - column:
+                  name: token_generated_at
+                  type: TIMESTAMP
+                  remarks: "When the current auth_token was issued"
+
+              - column:
+                  name: token_expires_at
+                  type: TIMESTAMP
+                  remarks: "When the current auth_token expires"
+
+        - createIndex:
+            tableName: users
+            indexName: idx_users_auth_token
+            unique: true
+            columns:
+              - column:
+                  name: auth_token
+
+      rollback:
+        - dropIndex:
+            tableName: users
+            indexName: idx_users_auth_token
+        - dropColumn:
+            tableName: users
+            columnName: token_expires_at
+        - dropColumn:
+            tableName: users
+            columnName: token_generated_at
+        - dropColumn:
+            tableName: users
+            columnName: auth_token
