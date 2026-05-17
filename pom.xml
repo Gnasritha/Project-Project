@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       Spring Boot 4.0.0 parent — compatible with Camunda 8.9 SDK
+       and Jakarta EE 10 (jakarta.* namespace)
+       ═══════════════════════════════════════════════════════════════ -->
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>4.0.0</version>
+    <relativePath/>
+  </parent>
+
+  <groupId>com.aaseya</groupId>
+  <artifactId>momthathel</artifactId>
+  <version>1.0.0</version>
+  <name>momthathel</name>
+  <description>Momthathel — Aaseya | Camunda 8.9 + Spring Boot 4 + PostgreSQL</description>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       Global versions
+       ═══════════════════════════════════════════════════════════════ -->
+  <properties>
+    <java.version>21</java.version>
+    <camunda.version>8.9.0</camunda.version>
+  </properties>
+
+  <!-- ═══════════════════════════════════════════════════════════════
+       Camunda 8.8+ artifacts are NOT on Maven Central.
+       They live on Camunda's Artifactory instance.
+       ═══════════════════════════════════════════════════════════════ -->
+  <repositories>
+    <repository>
+      <id>camunda-releases</id>
+      <name>Camunda Release Repository</name>
+      <url>https://artifacts.camunda.com/artifactory/zeebe-io/</url>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>false</enabled></snapshots>
+    </repository>
+  </repositories>
+
+  <dependencies>
+
+    <!-- ── Spring Boot Web (REST Controllers, Jackson) ───────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+
+    <!-- ── Camunda 8.9 Spring Boot Starter ──────────────────────────
+         Provides:
+           • CamundaClient  (io.camunda.client.CamundaClient)
+           • @JobWorker     (io.camunda.client.annotation.JobWorker)
+           • @Variable      (io.camunda.client.annotation.Variable)
+         Auto-configures the client from application.yml
+         camunda.client.* properties.
+         NOTE: Use camunda-spring-boot-starter (not the -3- variant)
+               when pairing with Spring Boot 4.0+
+         ─────────────────────────────────────────────────────────── -->
+    <dependency>
+      <groupId>io.camunda</groupId>
+      <artifactId>camunda-spring-boot-starter</artifactId>
+      <version>${camunda.version}</version>
+    </dependency>
+
+    <!-- ── Spring Data JPA (Repositories, EntityManager) ────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+    </dependency>
+
+    <!-- ── PostgreSQL JDBC Driver ────────────────────────────────── -->
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
+    <!-- ── Liquibase — versioned DB migrations (matches LMS pattern) ──
+         Master changelog: src/main/resources/db/changelog/db.changelog-master.yaml
+         Spring Boot auto-runs it at startup when spring.liquibase.enabled=true. -->
+    <dependency>
+      <groupId>org.liquibase</groupId>
+      <artifactId>liquibase-core</artifactId>
+    </dependency>
+
+    <!-- ── Spring Security + OAuth2 Resource Server (Keycloak JWT) ──
+         Validates Bearer JWTs issued by Keycloak. Pairs with the
+         SecurityConfig in com.aaseya.momthathel.keycloak (mirrors LMS). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+    </dependency>
+
+    <!-- ── Bean Validation (jakarta.validation) ──────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+
+    <!-- ── Lombok — reduces boilerplate (@Data, @Builder, etc.) ─── -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- ── Spring Boot Actuator — health / metrics endpoints ─────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- ── Tests ─────────────────────────────────────────────────── -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- H2 in-memory DB for unit tests (test scope only) -->
+    <dependency>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- ── SpringDoc OpenAPI / Swagger UI ───────────────────────── -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.8.8</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+
+      <!-- Spring Boot repackage → executable JAR / layered image -->
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <!-- Exclude Lombok from the packaged artifact -->
+          <excludes>
+            <exclude>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+
+      <!-- Java Compiler: two critical flags.
+           Flag 1: -parameters lets Camunda @Variable resolve parameter
+                   names without explicit annotation values.
+           Flag 2: enable-preview (prefix with single dash at runtime)
+                   is optional and only needed for Java 22 preview features. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+          <compilerArgs>
+            <arg>-parameters</arg>
+          </compilerArgs>
+          <!-- Annotation processing for Lombok -->
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+            </path>
+          </annotationProcessorPaths>
+        </configuration>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>
