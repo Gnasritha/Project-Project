@@ -1,0 +1,25 @@
+##############################################################################
+#  V019 — Add mobile_number column to ESTABLISHMENT
+#  Surfaces an establishment contact number on the license-verification
+#  card in the mobile app (Flutter field: mobileNumber).
+#  Depends on: V005 (establishment)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V019-add-mobile-number-to-establishment
+      author: aaseya
+      changes:
+
+        - addColumn:
+            tableName: establishment
+            columns:
+              - column:
+                  name: mobile_number
+                  type: VARCHAR(20)
+                  remarks: "Contact mobile number for the establishment (E.164 or local format)"
+
+      rollback:
+        - dropColumn:
+            tableName: establishment
+            columnName: mobile_number

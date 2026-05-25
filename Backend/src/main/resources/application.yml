@@ -1,0 +1,252 @@
+# ═══════════════════════════════════════════════════════════════════════
+#  Momthathel — application.yml
+#  Camunda 8.9  |  Spring Boot 4.0  |  Java 22  |  PostgreSQL
+# ═══════════════════════════════════════════════════════════════════════
+
+# ───────────────────────────────────────────────────────────────────────
+# PROFILE: local  (default — Docker Compose self-managed stack)
+# Camunda components expected at:
+#   Zeebe gRPC  → localhost:26500
+#   REST gateway → localhost:8080
+#   Keycloak     → localhost:18080
+# ───────────────────────────────────────────────────────────────────────
+spring:
+  profiles:
+    active: local
+
+  application:
+    name: momthathel
+
+  jackson:
+    serialization:
+      indent-output: true
+    default-property-inclusion: non_null
+
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 50MB
+
+  # ── PostgreSQL DataSource ─────────────────────────────────────────────
+  # Host / port / DB name are all env-driven so swapping the Postgres
+  # instance is a one-line change in .env (no code edit needed).
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:Momthathel}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:Postgres}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: MomthathleHikariPool
+
+  # ── Liquibase — schema migrations (matches LMS pattern) ───────────────
+  # Liquibase OWNS the schema. Hibernate's ddl-auto is set to 'none' below
+  # so Hibernate validates / uses the schema but never alters it.
+  liquibase:
+    enabled: ${SPRING_LIQUIBASE_ENABLED:true}
+    change-log: ${SPRING_LIQUIBASE_CHANGE_LOG:classpath:db/changelog/db.changelog-master.yaml}
+
+  # ── JPA / Hibernate ───────────────────────────────────────────────────
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none          # Liquibase manages schema, NOT Hibernate
+    show-sql: false           # flip to true for query debugging
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+  # ── Spring Security — OAuth2 Resource Server (Keycloak JWT) ───────────
+  # Validates Bearer JWTs issued by the Keycloak realm below.
+  # issuer-uri MUST match the 'iss' claim in tokens minted by this realm,
+  # which is {server-url}/realms/{realm}. Both halves are env-driven.
+  # Defaults match the realm shipped in keycloak-realms/momthathel-keycloak-realm.json
+  # imported into a local Keycloak container on :18080.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:${KEYCLOAK_SERVER_URL:http://localhost:18080/auth}/realms/${KEYCLOAK_REALM:momthathel}}
+
+# ── Server ────────────────────────────────────────────────────────────
+server:
+  port: 8980
+  servlet:
+    context-path: /
+
+# ── Momthathel application settings ───────────────────────────────────
+momthathel:
+  attachments:
+    storage-path: ${MOMTHATHEL_ATTACHMENTS_PATH:./uploads/attachments}
+
+# ── Keycloak — single source of truth for inspector auth ─────────────
+# Single-API login: AuthController → AuthService → KeycloakUserService
+#   POST {server-url}/realms/{realm}/protocol/openid-connect/token
+#   grant_type=password & client_id={client.id} & username=...&password=...
+# After login the mobile app sends the returned JWT as a Bearer token;
+# Spring Security validates it against the JWKS published by issuer-uri
+# (see spring.security.oauth2.resourceserver.jwt above).
+#
+# Defaults align with the realm shipped in
+# keycloak-realms/momthathel-keycloak-realm.json:
+#   • realm        : momthathel
+#   • client       : momthathel-mobile  (public, directAccessGrants=true)
+#   • realm role   : INSPECTOR          (no ROLE_ prefix — Keycloak convention)
+# AuthService strips a leading "ROLE_" so the legacy value
+# "ROLE_INSPECTOR" still works if you keep that in an existing .env.
+#
+# To point at a shared dev Keycloak instead, override via .env:
+#   KEYCLOAK_SERVER_URL=http://10.13.1.180:8180
+#   KEYCLOAK_REALM=...
+#   KEYCLOAK_CLIENT_ID=...
+keycloak:
+  server-url:    ${KEYCLOAK_SERVER_URL:http://localhost:18080/auth}
+  realm:         ${KEYCLOAK_REALM:momthathel}
+  required-role: ${KEYCLOAK_REQUIRED_ROLE:INSPECTOR}
+  client:
+    id:     ${KEYCLOAK_CLIENT_ID:momthathel-mobile}
+    # Public client in the shipped realm — leave secret empty.
+    # Set KEYCLOAK_CLIENT_SECRET only if you flip the client to confidential.
+    secret: ${KEYCLOAK_CLIENT_SECRET:}
+  admin:
+    # Used by tooling only (e.g. keycloak-realms/import-users.sh) — the
+    # Spring Boot app itself never reads admin credentials.
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
+
+# ── Camunda 8.9 Client — Self-Managed (local Docker Compose) ─────────
+#
+#  Key 8.8+ property changes applied here:
+#    • mode: self-managed                (explicit)
+#    • auth.method: oidc                 (explicit; older SDK defaulted to none)
+#    • auth.issuer-url                   (renamed from auth.issuer in 8.8+)
+#    • rest-address targets the REST Gateway, not Operate/Tasklist
+# ─────────────────────────────────────────────────────────────────────
+camunda:
+  client:
+    # Zeebe (:8080/:26500) + Keycloak (:18080 camunda-platform realm) must be
+    # reachable. When true and the gateway is up, createVisit starts a real
+    # PerformInspection instance — the visible inspectionNumber will be the
+    # 16-digit Zeebe processInstanceKey. With this set to false, the service
+    # falls back to a 13-digit timestamp and no process is recorded.
+    enabled: true
+
+    mode: self-managed
+
+    # REST Gateway (Camunda 8.6+ unified gateway REST API) — Zeebe, not this app
+    rest-address: http://localhost:8080
+    grpc-address: http://localhost:26500
+
+    auth:
+      method: oidc
+
+      # ╔══════════════════════════════════════════════════════════════╗
+      # ║  CORRECT property name for 8.8+ SDK:                        ║
+      # ║    issuer-url  (NOT  issuer)                                 ║
+      # ╚══════════════════════════════════════════════════════════════╝
+      issuer-url: http://localhost:18080/auth/realms/camunda-platform
+
+      client-id: orchestration
+      client-secret: ${CAMUNDA_CLIENT_SECRET:secret}
+
+# ── Actuator ──────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# ── Logging ───────────────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.aaseya.momthathel: DEBUG
+    io.camunda: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.web: INFO
+
+# ── SpringDoc / Swagger UI ────────────────────────────────────────────────
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+  show-actuator: false
+
+# ═══════════════════════════════════════════════════════════════════════
+# PROFILE: saas  — Camunda Cloud (SaaS)
+# Activate with: --spring.profiles.active=saas
+# Set env vars: CAMUNDA_CLIENT_ID, CAMUNDA_CLIENT_SECRET,
+#               CAMUNDA_CLUSTER_ID, CAMUNDA_REGION
+# ═══════════════════════════════════════════════════════════════════════
+---
+spring:
+  config:
+    activate:
+      on-profile: saas
+
+camunda:
+  client:
+    mode: saas
+    auth:
+      client-id: ${CAMUNDA_CLIENT_ID}
+      client-secret: ${CAMUNDA_CLIENT_SECRET}
+    cloud:
+      cluster-id: ${CAMUNDA_CLUSTER_ID}
+      region: ${CAMUNDA_REGION:bru-2}
+
+# ═══════════════════════════════════════════════════════════════════════
+# PROFILE: docker  — for running the app inside a Docker container
+#                    that shares a docker-compose network with Camunda
+# ═══════════════════════════════════════════════════════════════════════
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+
+  datasource:
+    url: jdbc:postgresql://postgres:5433/momthathel
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:Postgres}
+
+  # When the app runs inside the compose network, hit the Keycloak
+  # container by its service name. Realm matches the shipped JSON.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://keycloak:8080/realms/${KEYCLOAK_REALM:momthathel}}
+
+keycloak:
+  server-url:    ${KEYCLOAK_SERVER_URL:http://keycloak:8080}
+  realm:         ${KEYCLOAK_REALM:momthathel}
+  required-role: ${KEYCLOAK_REQUIRED_ROLE:INSPECTOR}
+  client:
+    id:     ${KEYCLOAK_CLIENT_ID:momthathel-mobile}
+    secret: ${KEYCLOAK_CLIENT_SECRET:}
+
+camunda:
+  client:
+    mode: self-managed
+    rest-address: http://zeebe:8080
+    auth:
+      method: oidc
+      # Camunda's OWN Keycloak (separate realm; not the app login realm above)
+      issuer-url: http://keycloak:8080/auth/realms/camunda-platform
+      client-id: orchestration
+      client-secret: ${CAMUNDA_CLIENT_SECRET:secret}

@@ -1,0 +1,28 @@
+##############################################################################
+#  V018 — Force-sync USERS schema with JPA entity using raw Postgres DDL
+#
+#  V017 attempted this via preConditions but did not take effect on the
+#  observed databases. This migration uses native Postgres "IF NOT EXISTS"
+#  / "DROP NOT NULL" / "IF EXISTS" clauses — idempotent at the DB level,
+#  so no Liquibase preconditions are required. Safe to run on any state.
+#
+#  Depends on: V004 (users)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V018-force-sync-users-columns
+      author: aaseya
+      changes:
+        - sql:
+            dbms: postgresql
+            splitStatements: true
+            stripComments: true
+            sql: |
+              ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_token VARCHAR(512);
+              ALTER TABLE users ADD COLUMN IF NOT EXISTS token_generated_at TIMESTAMP;
+              ALTER TABLE users ADD COLUMN IF NOT EXISTS token_expires_at TIMESTAMP;
+              ALTER TABLE users ADD COLUMN IF NOT EXISTS keycloak_sub VARCHAR(64);
+              ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+              CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth_token ON users(auth_token);
+              CREATE UNIQUE INDEX IF NOT EXISTS uk_users_keycloak_sub ON users(keycloak_sub);

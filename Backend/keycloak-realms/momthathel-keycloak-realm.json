@@ -1,0 +1,217 @@
+{
+  "realm": "momthathel",
+  "enabled": true,
+  "displayName": "Momthathel — Inspection System",
+  "loginTheme": "keycloak",
+  "accessTokenLifespan": 1800,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+
+  "clients": [
+    {
+      "clientId": "momthathel-mobile",
+      "name": "Momthathel Mobile App",
+      "description": "Public client used by the Flutter mobile app + Spring Boot backend (resource server).",
+      "rootUrl": "http://localhost:8989/",
+      "adminUrl": "http://localhost:8989/",
+      "baseUrl": "http://localhost:8989/",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [
+        "http://localhost:*",
+        "http://localhost:8989/*",
+        "http://localhost:3000/*",
+        "momthathel://*"
+      ],
+      "webOrigins": ["*"],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": true,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "*",
+        "oauth2.device.authorization.grant.enabled": "true",
+        "display.on.consent.screen": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {},
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "basic",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "access": {
+        "view": true,
+        "configure": true,
+        "manage": true
+      }
+    }
+  ],
+
+  "roles": {
+    "realm": [
+      { "name": "ADMIN",      "description": "System administrator — full access to all APIs" },
+      { "name": "INSPECTOR",  "description": "Field inspector — primary mobile-app persona (ISM-2 → ISM-8)" },
+      { "name": "SUPERVISOR", "description": "Inspection supervisor — reviews / approves cases" },
+      { "name": "VIEWER",     "description": "Read-only access for reporting" }
+    ]
+  },
+
+  "groups": [
+    { "name": "GROUP-Admin",      "realmRoles": ["ADMIN"] },
+    { "name": "GROUP-Inspector",  "realmRoles": ["INSPECTOR"] },
+    { "name": "GROUP-Supervisor", "realmRoles": ["SUPERVISOR"] },
+    { "name": "GROUP-Viewer",     "realmRoles": ["VIEWER"] }
+  ],
+
+  "users": [
+    {
+      "username": "admin",
+      "firstName": "System",
+      "lastName": "Administrator",
+      "email": "admin@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Admin"]
+    },
+    {
+      "username": "inspector01",
+      "firstName": "Ahmed",
+      "lastName": "Al-Rashid",
+      "email": "ahmed.alrashid@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Inspector"],
+      "attributes": {
+        "employee_id": ["EMP-1001"],
+        "mobile_number": ["+966500000001"],
+        "language": ["ar"]
+      }
+    },
+    {
+      "username": "inspector02",
+      "firstName": "Fahad",
+      "lastName": "Al-Otaibi",
+      "email": "fahad.alotaibi@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Inspector"],
+      "attributes": {
+        "employee_id": ["EMP-1002"],
+        "mobile_number": ["+966500000002"],
+        "language": ["ar"]
+      }
+    },
+    {
+      "username": "inspector03",
+      "firstName": "Khalid",
+      "lastName": "Al-Sulaiman",
+      "email": "khalid.alsulaiman@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Inspector"],
+      "attributes": {
+        "employee_id": ["EMP-1003"],
+        "mobile_number": ["+966500000003"],
+        "language": ["ar"]
+      }
+    },
+    {
+      "username": "inspector04",
+      "firstName": "Mohammed",
+      "lastName": "Al-Qahtani",
+      "email": "mohammed.alqahtani@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Inspector"],
+      "attributes": {
+        "employee_id": ["EMP-1004"],
+        "mobile_number": ["+966500000004"],
+        "language": ["en"]
+      }
+    },
+    {
+      "username": "inspector05",
+      "firstName": "Saud",
+      "lastName": "Al-Ghamdi",
+      "email": "saud.alghamdi@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Inspector"],
+      "attributes": {
+        "employee_id": ["EMP-1005"],
+        "mobile_number": ["+966500000005"],
+        "language": ["en"]
+      }
+    },
+    {
+      "username": "supervisor01",
+      "firstName": "Sanjay",
+      "lastName": "Jain",
+      "email": "sanjay.jain@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Supervisor"],
+      "attributes": {
+        "employee_id": ["EMP-2001"],
+        "language": ["en"]
+      }
+    },
+    {
+      "username": "supervisor02",
+      "firstName": "Jyothsna",
+      "lastName": "Valasala",
+      "email": "jyothsna.valasala@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Supervisor"],
+      "attributes": {
+        "employee_id": ["EMP-2002"],
+        "language": ["en"]
+      }
+    },
+    {
+      "username": "viewer01",
+      "firstName": "Reports",
+      "lastName": "User",
+      "email": "reports@aaseya.com",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "Password@123", "temporary": false }],
+      "groups": ["GROUP-Viewer"],
+      "attributes": {
+        "employee_id": ["EMP-3001"],
+        "language": ["en"]
+      }
+    }
+  ]
+}

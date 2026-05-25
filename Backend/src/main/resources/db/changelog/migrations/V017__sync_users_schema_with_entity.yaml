@@ -1,0 +1,148 @@
+##############################################################################
+#  V017 — Sync USERS table with the JPA entity (defensive / idempotent)
+#
+#  Background: existing databases were observed to be missing columns added
+#  by V013 (auth_token, token_generated_at, token_expires_at) and V016
+#  (keycloak_sub + nullable password_hash) — either because those migrations
+#  were applied to a different schema, the DB was restored from an older
+#  snapshot, or the schema was bootstrapped by hand.
+#
+#  Each changeset below uses a preCondition so it is a no-op when the column
+#  / constraint already exists. Safe to run repeatedly; safe on a fresh DB
+#  too (V013 and V016 will run first and these will all skip).
+#
+#  Depends on: V004 (users), V013 (auth token columns), V016 (keycloak_sub)
+##############################################################################
+databaseChangeLog:
+
+  # ── auth_token column ────────────────────────────────────────────────────
+  - changeSet:
+      id: V017-add-auth-token-if-missing
+      author: aaseya
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: users
+                columnName: auth_token
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: auth_token
+                  type: VARCHAR(512)
+                  remarks: "API-generated opaque token used for mobile-app login (ISM-2)"
+
+  # ── token_generated_at column ────────────────────────────────────────────
+  - changeSet:
+      id: V017-add-token-generated-at-if-missing
+      author: aaseya
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: users
+                columnName: token_generated_at
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: token_generated_at
+                  type: TIMESTAMP
+
+  # ── token_expires_at column ──────────────────────────────────────────────
+  - changeSet:
+      id: V017-add-token-expires-at-if-missing
+      author: aaseya
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: users
+                columnName: token_expires_at
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: token_expires_at
+                  type: TIMESTAMP
+
+  # ── unique index on auth_token ───────────────────────────────────────────
+  - changeSet:
+      id: V017-add-auth-token-unique-index-if-missing
+      author: aaseya
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: users
+                indexName: idx_users_auth_token
+      changes:
+        - createIndex:
+            tableName: users
+            indexName: idx_users_auth_token
+            unique: true
+            columns:
+              - column:
+                  name: auth_token
+
+  # ── keycloak_sub column ──────────────────────────────────────────────────
+  - changeSet:
+      id: V017-add-keycloak-sub-if-missing
+      author: aaseya
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - columnExists:
+                tableName: users
+                columnName: keycloak_sub
+      changes:
+        - addColumn:
+            tableName: users
+            columns:
+              - column:
+                  name: keycloak_sub
+                  type: VARCHAR(64)
+                  remarks: "Keycloak 'sub' claim — stable id for the Keycloak user"
+
+  # ── unique index on keycloak_sub ─────────────────────────────────────────
+  - changeSet:
+      id: V017-add-keycloak-sub-unique-index-if-missing
+      author: aaseya
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: users
+                indexName: uk_users_keycloak_sub
+      changes:
+        - createIndex:
+            tableName: users
+            indexName: uk_users_keycloak_sub
+            unique: true
+            columns:
+              - column:
+                  name: keycloak_sub
+
+  # ── password_hash → nullable (Keycloak owns the credential) ──────────────
+  - changeSet:
+      id: V017-password-hash-nullable-if-not-already
+      author: aaseya
+      preConditions:
+        - onFail: MARK_RAN
+        - sqlCheck:
+            expectedResult: "NO"
+            sql: |
+              SELECT is_nullable
+              FROM information_schema.columns
+              WHERE table_schema = current_schema()
+                AND table_name = 'users'
+                AND column_name = 'password_hash'
+      changes:
+        - dropNotNullConstraint:
+            tableName: users
+            columnName: password_hash
+            columnDataType: VARCHAR(512)

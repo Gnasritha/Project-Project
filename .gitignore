@@ -1,63 +1,32 @@
-# ── Maven ─────────────────────────────────────────────
-target/
-*.class
-*.jar
-*.war
+# ── Build outputs ───────────────────────────────────────────────────────
+**/target/
+**/bin/
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
 
-# ── Eclipse ───────────────────────────────────────────
-.settings/
-.classpath
+# ── IDE / editor cruft ──────────────────────────────────────────────────
 .project
-.factorypath
-.metadata/
-.recommenders/
-.apt_generated/
-
-# ── IntelliJ IDEA ─────────────────────────────────────
-.idea/
+.classpath
+.settings/
 *.iml
-*.iws
-*.ipr
-out/
-
-# ── VS Code ───────────────────────────────────────────
+.idea/
 .vscode/
-
-# ── NetBeans ──────────────────────────────────────────
-nbproject/private/
-nbbuild/
-dist/
-nbdist/
-.nb-gradle/
-
-# ── OS metadata ───────────────────────────────────────
+*.swp
 .DS_Store
 Thumbs.db
-desktop.ini
-ehthumbs.db
 
-# ── Logs ──────────────────────────────────────────────
+# ── Logs / temp ─────────────────────────────────────────────────────────
 *.log
-logs/
-
-# ── Local env / secrets ───────────────────────────────
-.env
-.env.local
-*.local.yml
-application-local.yml
-application-secret.yml
-
-# ── Runtime uploads ───────────────────────────────────
-uploads/
-
-# ── Misc temp ─────────────────────────────────────────
+*.tmp
 *.bak
-*.swp
-*.swo
-*~
 
-# ── Spring Boot extras ────────────────────────────────
-*.original
+# ── Local env / secrets (KEEP for the future — current OMSConstant secrets
+#    are in source on purpose per this branch's push instruction) ───────
+.env
+.env.*
+*.local
 
-# ── HELP files Eclipse generates ──────────────────────
-HELP.md
+# ── One-off DB bootstrap script (created during hot-patch session) ──────
+Backend/liquibase-bootstrap.sql

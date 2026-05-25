@@ -1,0 +1,19 @@
+##############################################################################
+#  V020 — Inspection-case BPMN tracking removed (no-op tag)
+#  Earlier revisions of this migration added BPMN-tracking columns to
+#  inspection_case (business_key, process_instance_key, process_definition_key,
+#  bpmn_process_id, process_status). The mobile flow now generates
+#  inspection_number directly from the Zeebe processInstanceKey
+#  (INS-yyyy-{processInstanceKey}), so none of those columns are needed —
+#  inspection_number alone identifies the case end-to-end.
+#  This changeSet is kept as a no-op (tagDatabase) so the existing entry in
+#  databasechangelog stays valid. Drop the columns on an older environment
+#  with a manual ALTER (see project SQL) or via a future migration.
+##############################################################################
+databaseChangeLog:
+  - changeSet:
+      id: V020-add-process-columns-to-inspection-case
+      author: aaseya
+      changes:
+        - tagDatabase:
+            tag: V020-bpmn-columns-removed
