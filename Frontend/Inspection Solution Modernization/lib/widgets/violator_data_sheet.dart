@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../core/api/api_exception.dart';
 import '../core/localization/app_strings.dart';
 import '../data/models/violator.dart';
+import '../services/violator_service.dart';
 import '../theme/app_theme.dart';
 import 'app_bottom_sheet.dart';
 import 'common_buttons.dart';
@@ -57,30 +59,40 @@ class _ViolatorDataSheetState extends State<_ViolatorDataSheet> {
     super.dispose();
   }
 
-  /// Mock verification — replace with a real registry lookup when the API is
-  /// available. Entity: facility number is 7+ digits. Individual: 10-digit ID
-  /// plus a birth date.
+  /// Hits the backend verification endpoint. Sets the violator's name when
+  /// the registry returns it so the accordion card on the Violators Info
+  /// screen reads the live value instead of the placeholder.
   Future<void> _verify() async {
     setState(() => _verifying = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-
-    bool ok;
-    if (_category == ViolatorCategory.entity) {
-      final n = _facilityNumber.text.trim();
-      ok = n.length >= 7 && int.tryParse(n) != null;
-    } else {
-      final id = _idNumber.text.trim();
-      ok = id.length == 10 &&
-          int.tryParse(id) != null &&
-          _birthDate.text.trim().isNotEmpty;
+    try {
+      ViolatorVerifyResult result;
+      if (_category == ViolatorCategory.entity) {
+        result = await ViolatorService.instance.verifyEntity(
+          nationalFacilityNumber: _facilityNumber.text.trim(),
+        );
+      } else {
+        result = await ViolatorService.instance.verifyIndividual(
+          idNumber: _idNumber.text.trim(),
+          birthDate: _birthDate.text.trim(),
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _verifying = false;
+        _verification = result.verified
+            ? VerificationState.verified
+            : VerificationState.failed;
+        if (result.verified && (result.name ?? '').isNotEmpty) {
+          widget.violator.name = result.name!;
+        }
+      });
+    } on ApiException {
+      if (!mounted) return;
+      setState(() {
+        _verifying = false;
+        _verification = VerificationState.failed;
+      });
     }
-
-    if (!mounted) return;
-    setState(() {
-      _verifying = false;
-      _verification =
-          ok ? VerificationState.verified : VerificationState.failed;
-    });
   }
 
   Future<void> _pickBirthDate() async {
