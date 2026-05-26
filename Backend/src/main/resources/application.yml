@@ -132,12 +132,13 @@ keycloak:
 # ─────────────────────────────────────────────────────────────────────
 camunda:
   client:
-    # Zeebe (:8080/:26500) + Keycloak (:18080 camunda-platform realm) must be
-    # reachable. When true and the gateway is up, createVisit starts a real
-    # PerformInspection instance — the visible inspectionNumber will be the
-    # 16-digit Zeebe processInstanceKey. With this set to false, the service
-    # falls back to a 13-digit timestamp and no process is recorded.
-    enabled: true
+    # Set to true once Keycloak's `orchestration` client + secret in the
+    # camunda-platform realm match what's configured below (look up in
+    # http://localhost:18080/auth/admin/ → realm camunda-platform →
+    # Clients → orchestration → Credentials). With false, createVisit
+    # falls back to a 13-digit timestamp inspectionNumber and the BPMN
+    # is not started.
+    enabled: false
 
     mode: self-managed
 

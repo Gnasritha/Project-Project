@@ -32,6 +32,33 @@ public class InspectionViolation {
     @Column(name = "corrective_action", columnDefinition = "TEXT")
     private String correctiveAction;
 
+    // ── Non-compliance bottom-sheet fields (V021) ───────────────────────────
+    /** Catalog id of the reason for non-compliance (e.g. "other", "no_license"). */
+    @Column(name = "reason_code", length = 50)
+    private String reasonCode;
+
+    /** Free-text reason, populated when {@code reasonCode == "other"}. */
+    @Column(name = "other_reason", columnDefinition = "TEXT")
+    private String otherReason;
+
+    @Column(name = "number_of_units")
+    private Integer numberOfUnits;
+
+    /** Who the violation is attributed to — "contractor" / "license_owner". */
+    @Column(name = "offender_type", length = 50)
+    private String offenderType;
+
+    /** CSV of selected penalty catalog ids (cancel_license, confiscate_goods, ...). */
+    @Column(name = "penalty_codes", length = 500)
+    private String penaltyCodes;
+
+    @Column(name = "confiscated_products", length = 255)
+    private String confiscatedProducts;
+
+    /** Optional inspector's notes for reviewer / approver. */
+    @Column(name = "inspector_notes", columnDefinition = "TEXT")
+    private String inspectorNotes;
+
     public InspectionViolation() {}
 
     public Long getViolationId() { return violationId; }
@@ -51,4 +78,25 @@ public class InspectionViolation {
 
     public String getCorrectiveAction() { return correctiveAction; }
     public void setCorrectiveAction(String correctiveAction) { this.correctiveAction = correctiveAction; }
+
+    public String getReasonCode() { return reasonCode; }
+    public void setReasonCode(String reasonCode) { this.reasonCode = reasonCode; }
+
+    public String getOtherReason() { return otherReason; }
+    public void setOtherReason(String otherReason) { this.otherReason = otherReason; }
+
+    public Integer getNumberOfUnits() { return numberOfUnits; }
+    public void setNumberOfUnits(Integer numberOfUnits) { this.numberOfUnits = numberOfUnits; }
+
+    public String getOffenderType() { return offenderType; }
+    public void setOffenderType(String offenderType) { this.offenderType = offenderType; }
+
+    public String getPenaltyCodes() { return penaltyCodes; }
+    public void setPenaltyCodes(String penaltyCodes) { this.penaltyCodes = penaltyCodes; }
+
+    public String getConfiscatedProducts() { return confiscatedProducts; }
+    public void setConfiscatedProducts(String confiscatedProducts) { this.confiscatedProducts = confiscatedProducts; }
+
+    public String getInspectorNotes() { return inspectorNotes; }
+    public void setInspectorNotes(String inspectorNotes) { this.inspectorNotes = inspectorNotes; }
 }

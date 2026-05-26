@@ -85,6 +85,14 @@ public class ViolationService {
             violation.setSeverity(request.getSeverity());
             violation.setViolationDescription(request.getViolationDescription());
             violation.setCorrectiveAction(request.getCorrectiveAction());
+            // Non-compliance bottom-sheet fields (all optional)
+            violation.setReasonCode(request.getReasonCode());
+            violation.setOtherReason(request.getOtherReason());
+            violation.setNumberOfUnits(request.getNumberOfUnits());
+            violation.setOffenderType(request.getOffenderType());
+            violation.setPenaltyCodes(request.getPenaltyCodes());
+            violation.setConfiscatedProducts(request.getConfiscatedProducts());
+            violation.setInspectorNotes(request.getInspectorNotes());
 
             InspectionViolation saved = violationRepository.save(violation);
 
@@ -96,6 +104,13 @@ public class ViolationService {
             response.setSeverity(saved.getSeverity());
             response.setViolationDescription(saved.getViolationDescription());
             response.setCorrectiveAction(saved.getCorrectiveAction());
+            response.setReasonCode(saved.getReasonCode());
+            response.setOtherReason(saved.getOtherReason());
+            response.setNumberOfUnits(saved.getNumberOfUnits());
+            response.setOffenderType(saved.getOffenderType());
+            response.setPenaltyCodes(saved.getPenaltyCodes());
+            response.setConfiscatedProducts(saved.getConfiscatedProducts());
+            response.setInspectorNotes(saved.getInspectorNotes());
             response.setSuccess(true);
             response.setMessage("Violation added successfully");
 
@@ -129,6 +144,13 @@ public class ViolationService {
                 r.setSeverity(v.getSeverity());
                 r.setViolationDescription(v.getViolationDescription());
                 r.setCorrectiveAction(v.getCorrectiveAction());
+                r.setReasonCode(v.getReasonCode());
+                r.setOtherReason(v.getOtherReason());
+                r.setNumberOfUnits(v.getNumberOfUnits());
+                r.setOffenderType(v.getOffenderType());
+                r.setPenaltyCodes(v.getPenaltyCodes());
+                r.setConfiscatedProducts(v.getConfiscatedProducts());
+                r.setInspectorNotes(v.getInspectorNotes());
                 out.add(r);
             }
             return out;

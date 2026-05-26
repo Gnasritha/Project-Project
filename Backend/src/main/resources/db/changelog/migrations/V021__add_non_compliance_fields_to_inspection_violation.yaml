@@ -1,0 +1,73 @@
+##############################################################################
+#  V021 — Add non-compliance / penalty fields to INSPECTION_VIOLATION
+#
+#  Backs the "Non-compliance reasons" bottom sheet (Sprint-2 screens 1-7).
+#  Each row of the sheet's violation list maps to one inspection_violation
+#  row; the clause-level fields (reason_code, other_reason, inspector_notes)
+#  are duplicated across rows for the same clause — a deliberate
+#  denormalisation that keeps the data model flat and the existing
+#  add-violation endpoint working unchanged.
+#
+#  Depends on: V009 (inspection_violation table)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V021-add-non-compliance-fields-to-inspection-violation
+      author: aaseya
+      changes:
+
+        - addColumn:
+            tableName: inspection_violation
+            columns:
+              - column:
+                  name: reason_code
+                  type: VARCHAR(50)
+                  remarks: "Catalog id of the reason for non-compliance (other / no_license / expired_license / activity_mismatch)"
+              - column:
+                  name: other_reason
+                  type: TEXT
+                  remarks: "Free-text reason when reason_code='other'"
+              - column:
+                  name: number_of_units
+                  type: INTEGER
+                  remarks: "Inspector-entered unit count for this violation row"
+              - column:
+                  name: offender_type
+                  type: VARCHAR(50)
+                  remarks: "Who the violation is attributed to — contractor / license_owner"
+              - column:
+                  name: penalty_codes
+                  type: VARCHAR(500)
+                  remarks: "Comma-separated catalog ids of selected penalties (cancel_license, confiscate_goods, close_facility, ...)"
+              - column:
+                  name: confiscated_products
+                  type: VARCHAR(255)
+                  remarks: "Free-text description of confiscated products (e.g. 'Nothing' or specific items)"
+              - column:
+                  name: inspector_notes
+                  type: TEXT
+                  remarks: "Optional inspector's notes for reviewer / approver"
+
+      rollback:
+        - dropColumn:
+            tableName: inspection_violation
+            columnName: reason_code
+        - dropColumn:
+            tableName: inspection_violation
+            columnName: other_reason
+        - dropColumn:
+            tableName: inspection_violation
+            columnName: number_of_units
+        - dropColumn:
+            tableName: inspection_violation
+            columnName: offender_type
+        - dropColumn:
+            tableName: inspection_violation
+            columnName: penalty_codes
+        - dropColumn:
+            tableName: inspection_violation
+            columnName: confiscated_products
+        - dropColumn:
+            tableName: inspection_violation
+            columnName: inspector_notes
