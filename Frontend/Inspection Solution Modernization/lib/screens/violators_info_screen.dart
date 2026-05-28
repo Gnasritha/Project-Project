@@ -23,6 +23,7 @@ class _ViolatorsInfoScreenState extends State<ViolatorsInfoScreen> {
   // Seeded from the violation flow; "Add Violator" appends more.
   final List<Violator> _violators = [];
   bool _seeded = false;
+  bool _autoSheetShown = false;
 
   @override
   void didChangeDependencies() {
@@ -34,6 +35,15 @@ class _ViolatorsInfoScreenState extends State<ViolatorsInfoScreen> {
         name: AppStrings.of(context).t('contractor'),
         violationClauseCount: 1,
       ));
+      // Auto-open the "Fill in violator data" bottom sheet for the seeded
+      // contractor — the flow per the Compliance Clauses → Next spec is to
+      // land the inspector directly on this sheet. Inspector can dismiss
+      // (X / Add) to fall back to the Violators Info list underneath.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _autoSheetShown || _violators.isEmpty) return;
+        _autoSheetShown = true;
+        _fillData(_violators.first);
+      });
     }
   }
 

@@ -34,9 +34,13 @@ class SessionState extends ChangeNotifier {
   String? get businessKey => _businessKey;
   int? get processInstanceKey => _processInstanceKey;
 
-  /// Case ID shown under the screen title — the backend business key when
-  /// available (e.g. INS-20260521-00042), otherwise the inspection number.
-  String? get caseDisplayId => _businessKey ?? _inspectionNumber;
+  /// Case ID shown under every step screen title (Facility Status, Compliance
+  /// Clauses, Violators Info, etc.). Prefers the server-generated
+  /// `inspectionNumber` (e.g. `INS-1779793762807`) returned by
+  /// `POST /api/mobile/visits`, falling back to the legacy business key
+  /// for older payloads. The scaffold already hides the slot when this is
+  /// null or empty, so no extra guard is needed on the binding sites.
+  String? get caseDisplayId => _inspectionNumber ?? _businessKey;
 
   String? get licenseNumber => _licenseNumber;
   LicenseVerificationResponse? get licenseInfo => _licenseInfo;
