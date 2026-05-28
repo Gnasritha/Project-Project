@@ -18,6 +18,7 @@ public class LicenseVerifyResponse {
     private String address;
     private String city;
     private String mobileNumber;
+    private String nationalFacilityNumber;
 
     private String message;
     private boolean success;
@@ -60,6 +61,9 @@ public class LicenseVerifyResponse {
 
     public String getMobileNumber() { return mobileNumber; }
     public void setMobileNumber(String mobileNumber) { this.mobileNumber = mobileNumber; }
+
+    public String getNationalFacilityNumber() { return nationalFacilityNumber; }
+    public void setNationalFacilityNumber(String nationalFacilityNumber) { this.nationalFacilityNumber = nationalFacilityNumber; }
 
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }

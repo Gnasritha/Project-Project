@@ -16,12 +16,14 @@ public class LicenseLookupDto {
     private String address;
     private String city;
     private String mobileNumber;
+    private String nationalFacilityNumber;
 
     public LicenseLookupDto() {}
 
     public LicenseLookupDto(Long licenseId, String licenseNumber, String licenseStatus, String licenseType,
                             LocalDate issueDate, LocalDate expiryDate, Long establishmentId, String establishmentName,
-                            String activityType, String address, String city, String mobileNumber) {
+                            String activityType, String address, String city, String mobileNumber,
+                            String nationalFacilityNumber) {
         this.licenseId = licenseId;
         this.licenseNumber = licenseNumber;
         this.licenseStatus = licenseStatus;
@@ -34,6 +36,7 @@ public class LicenseLookupDto {
         this.address = address;
         this.city = city;
         this.mobileNumber = mobileNumber;
+        this.nationalFacilityNumber = nationalFacilityNumber;
     }
 
     public Long getLicenseId() { return licenseId; }
@@ -71,4 +74,7 @@ public class LicenseLookupDto {
 
     public String getMobileNumber() { return mobileNumber; }
     public void setMobileNumber(String mobileNumber) { this.mobileNumber = mobileNumber; }
+
+    public String getNationalFacilityNumber() { return nationalFacilityNumber; }
+    public void setNationalFacilityNumber(String nationalFacilityNumber) { this.nationalFacilityNumber = nationalFacilityNumber; }
 }

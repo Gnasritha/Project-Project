@@ -28,17 +28,32 @@ class _ViolatorsInfoScreenState extends State<ViolatorsInfoScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Seed once, with a locale-aware name.
-    if (!_seeded) {
-      _seeded = true;
-      _violators.add(Violator(
-        name: AppStrings.of(context).t('contractor'),
-        violationClauseCount: 1,
-      ));
-      // Auto-open the "Fill in violator data" bottom sheet for the seeded
-      // contractor — the flow per the Compliance Clauses → Next spec is to
-      // land the inspector directly on this sheet. Inspector can dismiss
-      // (X / Add) to fall back to the Violators Info list underneath.
+    if (_seeded) return;
+    _seeded = true;
+
+    // The establishment was looked up in the registry during the license
+    // step; reuse that result instead of re-querying. found == true means the
+    // violator/establishment exists in the database, so we auto-identify it.
+    final info = context.read<SessionState>().licenseInfo;
+    final identified = info?.found ?? false;
+
+    _violators.add(Violator(
+      name: AppStrings.of(context).t('contractor'),
+      category: ViolatorCategory.entity,
+      violationClauseCount: 1,
+      // AC2: when the violator is on record, "Yes, identified" is preselected
+      // and its registry details are filled in without inspector input.
+      identified: identified ? true : null,
+      nationalFacilityNumber: identified ? info?.nationalFacilityNumber : null,
+      verification:
+          identified ? VerificationState.verified : VerificationState.idle,
+      dataFilled: identified,
+    ));
+
+    // Only drop the inspector straight into the "Fill in violator data" sheet
+    // when the violator could NOT be auto-identified — a known violator
+    // already has its details populated from the registry.
+    if (!identified) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _autoSheetShown || _violators.isEmpty) return;
         _autoSheetShown = true;
@@ -47,12 +62,25 @@ class _ViolatorsInfoScreenState extends State<ViolatorsInfoScreen> {
     }
   }
 
-  // Mock owner — wire to the establishment endpoint when the API is ready.
-  static const _owner = OwnerInfo(
-    name: 'شركة جمرة عرب للتعدين شركة شخص واحد',
-    nationalFacilityNumber: '7027127898',
-    mobileNumber: null,
-  );
+  /// Establishment owner shown beneath the violator list. Built from the
+  /// license-verification result already in the session (fetched from the
+  /// registry), falling back to null when this inspection has no license
+  /// context (the no-license flow), in which case the card is hidden.
+  OwnerInfo? _ownerFrom(SessionState session) {
+    final info = session.licenseInfo;
+    if (info == null || !info.found) return null;
+    final nameAr = info.establishmentNameAr;
+    final name = (nameAr != null && nameAr.isNotEmpty)
+        ? nameAr
+        : (info.establishmentName ?? AppStrings.of(context).t('owner'));
+    final facility = info.nationalFacilityNumber;
+    return OwnerInfo(
+      name: name,
+      nationalFacilityNumber:
+          (facility != null && facility.isNotEmpty) ? facility : '—',
+      mobileNumber: info.mobileNumber,
+    );
+  }
 
   void _addViolator() {
     final s = AppStrings.of(context);
@@ -75,6 +103,7 @@ class _ViolatorsInfoScreenState extends State<ViolatorsInfoScreen> {
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     final session = context.watch<SessionState>();
+    final owner = _ownerFrom(session);
 
     return InspectionScreenScaffold(
       title: s.t('violatorsInfo'),
@@ -104,8 +133,10 @@ class _ViolatorsInfoScreenState extends State<ViolatorsInfoScreen> {
             ),
             const SizedBox(height: 14),
           ],
-          const SizedBox(height: 2),
-          _OwnerCard(owner: _owner),
+          if (owner != null) ...[
+            const SizedBox(height: 2),
+            _OwnerCard(owner: owner),
+          ],
         ],
       ),
     );

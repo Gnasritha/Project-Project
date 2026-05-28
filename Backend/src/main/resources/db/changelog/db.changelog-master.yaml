@@ -104,3 +104,8 @@ databaseChangeLog:
   - include:
       file: db/changelog/migrations/V021__add_non_compliance_fields_to_inspection_violation.yaml
       relativeToChangelogFile: false
+
+  # ── Establishment national_facility_number for Violators Info owner card ──
+  - include:
+      file: db/changelog/migrations/V022__add_national_facility_number_to_establishment.yaml
+      relativeToChangelogFile: false

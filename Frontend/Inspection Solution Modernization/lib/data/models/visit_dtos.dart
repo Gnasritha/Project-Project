@@ -48,6 +48,7 @@ class LicenseVerificationResponse {
   final String? licenseType;
   final String? licenseStatus;
   final String? mobileNumber;
+  final String? nationalFacilityNumber;
   final String? city;
   final double? latitude;
   final double? longitude;
@@ -65,6 +66,7 @@ class LicenseVerificationResponse {
     this.licenseType,
     this.licenseStatus,
     this.mobileNumber,
+    this.nationalFacilityNumber,
     this.city,
     this.latitude,
     this.longitude,
@@ -82,6 +84,7 @@ class LicenseVerificationResponse {
         licenseType: j['licenseType'] as String?,
         licenseStatus: j['licenseStatus'] as String?,
         mobileNumber: (j['mobileNumber'] ?? j['mobile']) as String?,
+        nationalFacilityNumber: j['nationalFacilityNumber'] as String?,
         city: j['city'] as String?,
         latitude: (j['latitude'] as num?)?.toDouble(),
         longitude: (j['longitude'] as num?)?.toDouble(),

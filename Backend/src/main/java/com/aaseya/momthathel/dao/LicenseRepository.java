@@ -37,7 +37,8 @@ public class LicenseRepository {
                     e.activityType,
                     e.address,
                     e.city,
-                    e.mobileNumber
+                    e.mobileNumber,
+                    e.nationalFacilityNumber
                 )
                 FROM License l
                 JOIN l.establishment e

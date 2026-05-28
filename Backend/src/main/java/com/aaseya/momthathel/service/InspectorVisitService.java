@@ -101,6 +101,7 @@ public class InspectorVisitService {
                 response.setAddress(dto.getAddress());
                 response.setCity(dto.getCity());
                 response.setMobileNumber(dto.getMobileNumber());
+                response.setNationalFacilityNumber(dto.getNationalFacilityNumber());
                 response.setSuccess(true);
                 response.setMessage("License found");
             } else {

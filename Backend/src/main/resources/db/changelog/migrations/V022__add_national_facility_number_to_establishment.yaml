@@ -1,0 +1,26 @@
+##############################################################################
+#  V022 — Add national_facility_number column to ESTABLISHMENT
+#  Surfaces the establishment's national facility number (commercial-registry
+#  identifier) on the Violators Info owner card in the mobile app
+#  (Flutter field: nationalFacilityNumber).
+#  Depends on: V005 (establishment)
+##############################################################################
+databaseChangeLog:
+
+  - changeSet:
+      id: V022-add-national-facility-number-to-establishment
+      author: aaseya
+      changes:
+
+        - addColumn:
+            tableName: establishment
+            columns:
+              - column:
+                  name: national_facility_number
+                  type: VARCHAR(30)
+                  remarks: "National facility number (commercial-registry id) for the establishment"
+
+      rollback:
+        - dropColumn:
+            tableName: establishment
+            columnName: national_facility_number

@@ -33,6 +33,9 @@ public class Establishment {
     @Column(name = "mobile_number", length = 20)
     private String mobileNumber;
 
+    @Column(name = "national_facility_number", length = 30)
+    private String nationalFacilityNumber;
+
     @Column(name = "latitude", precision = 10)
     private Double latitude;
 
@@ -76,6 +79,9 @@ public class Establishment {
 
     public String getMobileNumber() { return mobileNumber; }
     public void setMobileNumber(String mobileNumber) { this.mobileNumber = mobileNumber; }
+
+    public String getNationalFacilityNumber() { return nationalFacilityNumber; }
+    public void setNationalFacilityNumber(String nationalFacilityNumber) { this.nationalFacilityNumber = nationalFacilityNumber; }
 
     public Double getLatitude() { return latitude; }
     public void setLatitude(Double latitude) { this.latitude = latitude; }

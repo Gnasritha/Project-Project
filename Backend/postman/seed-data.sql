@@ -24,11 +24,13 @@ ON CONFLICT DO NOTHING;
 
 -- ── 3. Establishment ──────────────────────────────────────────────────────
 INSERT INTO establishment (establishment_id, establishment_name, activity_type,
-                           address, city, latitude, longitude, license_available)
+                           address, city, latitude, longitude, license_available,
+                           national_facility_number)
 VALUES (nextval('establishment_establishment_id_seq'),
         'Al-Rashid Trading Co.', 'Retail',
         'King Fahd Road, Block 4', 'Riyadh',
-        24.7136, 46.6753, true);
+        24.7136, 46.6753, true,
+        '7027127898');
 
 -- ── 4. License attached to that establishment ─────────────────────────────
 INSERT INTO license (license_id, license_number, establishment_id,
