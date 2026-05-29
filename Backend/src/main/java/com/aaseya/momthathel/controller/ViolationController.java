@@ -25,8 +25,8 @@ public class ViolationController {
     // ── ISM-7 ────────────────────────────────────────────────────────────
     @GetMapping("/api/mobile/licenses/{licenseNumber}/previous-violations")
     public ResponseEntity<?> previousViolations(
-            @PathVariable String licenseNumber,
-            @RequestParam(required = false) Long excludeInspectionId) {
+            @PathVariable("licenseNumber") String licenseNumber,
+            @RequestParam(name = "excludeInspectionId", required = false) Long excludeInspectionId) {
         try {
             List<PreviousViolationDto> result =
                     violationService.previousViolationsForLicense(licenseNumber, excludeInspectionId);
@@ -41,7 +41,7 @@ public class ViolationController {
 
     // ── ISM-8 ────────────────────────────────────────────────────────────
     @PostMapping("/api/mobile/visits/{inspectionId}/violations")
-    public ResponseEntity<?> addViolation(@PathVariable Long inspectionId,
+    public ResponseEntity<?> addViolation(@PathVariable("inspectionId") Long inspectionId,
                                           @RequestBody ViolationCreateRequest request) {
         try {
             ViolationResponse result = violationService.addViolation(inspectionId, request);
@@ -55,7 +55,7 @@ public class ViolationController {
     }
 
     @GetMapping("/api/mobile/visits/{inspectionId}/violations")
-    public ResponseEntity<?> listViolations(@PathVariable Long inspectionId) {
+    public ResponseEntity<?> listViolations(@PathVariable("inspectionId") Long inspectionId) {
         try {
             List<ViolationResponse> result = violationService.listForInspection(inspectionId);
             return ResponseEntity.ok(result);
@@ -68,8 +68,8 @@ public class ViolationController {
     }
 
     @DeleteMapping("/api/mobile/visits/{inspectionId}/violations/{violationId}")
-    public ResponseEntity<?> deleteViolation(@PathVariable Long inspectionId,
-                                             @PathVariable Long violationId) {
+    public ResponseEntity<?> deleteViolation(@PathVariable("inspectionId") Long inspectionId,
+                                             @PathVariable("violationId") Long violationId) {
         try {
             violationService.deleteViolation(inspectionId, violationId);
             Map<String, Object> ok = new HashMap<>();

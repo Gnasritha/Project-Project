@@ -29,7 +29,7 @@ public class MobileVisitController {
     private InspectorVisitService visitService;
 
     @GetMapping("/inspection-types")
-    public ResponseEntity<?> getMappedInspectionTypes(@RequestParam Long inspectorId) {
+    public ResponseEntity<?> getMappedInspectionTypes(@RequestParam("inspectorId") Long inspectorId) {
         try {
             List<InspectionTypeResponse> result = visitService.getMappedInspectionTypes(inspectorId);
             return ResponseEntity.ok(result);
@@ -57,7 +57,7 @@ public class MobileVisitController {
     /** Mobile API #1 — Case creation. Also starts the PerformInspection BPMN process. */
     @PostMapping
     public ResponseEntity<?> createVisit(@RequestBody VisitCreateRequest request,
-                                         @RequestParam Long inspectorId) {
+                                         @RequestParam("inspectorId") Long inspectorId) {
         try {
             VisitResponse result = visitService.createVisit(request, inspectorId);
             return ResponseEntity.ok(result);
@@ -71,7 +71,7 @@ public class MobileVisitController {
 
     /** Mobile API #2 — Fetch a single case (with its BPMN process keys). */
     @GetMapping("/{inspectionId}")
-    public ResponseEntity<?> getVisit(@PathVariable Long inspectionId) {
+    public ResponseEntity<?> getVisit(@PathVariable("inspectionId") Long inspectionId) {
         try {
             VisitResponse result = visitService.getVisit(inspectionId);
             return ResponseEntity.ok(result);
@@ -85,7 +85,7 @@ public class MobileVisitController {
 
     /** Mobile API #2 (list) — All cases raised by an inspector, newest first. */
     @GetMapping
-    public ResponseEntity<?> getVisits(@RequestParam Long inspectorId) {
+    public ResponseEntity<?> getVisits(@RequestParam("inspectorId") Long inspectorId) {
         try {
             List<VisitResponse> result = visitService.getVisitsByInspector(inspectorId);
             return ResponseEntity.ok(result);
@@ -99,7 +99,7 @@ public class MobileVisitController {
 
     /** Mobile API #3 — Submit a case; marks it SUBMITTED and signals the BPMN process. */
     @PostMapping("/{inspectionId}/submit")
-    public ResponseEntity<?> submitVisit(@PathVariable Long inspectionId) {
+    public ResponseEntity<?> submitVisit(@PathVariable("inspectionId") Long inspectionId) {
         try {
             VisitResponse result = visitService.submitVisit(inspectionId);
             return ResponseEntity.ok(result);
@@ -126,7 +126,7 @@ public class MobileVisitController {
 
     @PostMapping("/no-license")
     public ResponseEntity<?> createNoLicenseVisit(@RequestBody NoLicenseVisitRequest request,
-                                                  @RequestParam Long inspectorId) {
+                                                  @RequestParam("inspectorId") Long inspectorId) {
         try {
             VisitResponse result = visitService.createNoLicenseVisit(request, inspectorId);
             return ResponseEntity.ok(result);

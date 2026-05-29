@@ -35,7 +35,7 @@ public class IsicActivityController {
     }
 
     @GetMapping("/{parentId}/details")
-    public ResponseEntity<?> getDetails(@PathVariable Long parentId) {
+    public ResponseEntity<?> getDetails(@PathVariable("parentId") Long parentId) {
         try {
             List<IsicActivityResponse> result = isicService.getDetailActivities(parentId);
             return ResponseEntity.ok(result);

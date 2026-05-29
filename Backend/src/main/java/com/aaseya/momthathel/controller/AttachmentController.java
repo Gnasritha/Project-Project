@@ -23,7 +23,7 @@ public class AttachmentController {
     private AttachmentService attachmentService;
 
     @PostMapping(consumes = "multipart/form-data")
-    public ResponseEntity<?> upload(@PathVariable Long inspectionId,
+    public ResponseEntity<?> upload(@PathVariable("inspectionId") Long inspectionId,
                                     @RequestParam("file") MultipartFile file) {
         try {
             AttachmentResponse result = attachmentService.upload(inspectionId, file);
@@ -37,7 +37,7 @@ public class AttachmentController {
     }
 
     @GetMapping
-    public ResponseEntity<?> list(@PathVariable Long inspectionId) {
+    public ResponseEntity<?> list(@PathVariable("inspectionId") Long inspectionId) {
         try {
             List<AttachmentResponse> result = attachmentService.list(inspectionId);
             return ResponseEntity.ok(result);
@@ -50,7 +50,7 @@ public class AttachmentController {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<?> validateMandatory(@PathVariable Long inspectionId) {
+    public ResponseEntity<?> validateMandatory(@PathVariable("inspectionId") Long inspectionId) {
         try {
             attachmentService.assertHasAtLeastOneAttachment(inspectionId);
             Map<String, Object> ok = new HashMap<>();
@@ -66,8 +66,8 @@ public class AttachmentController {
     }
 
     @DeleteMapping("/{attachmentId}")
-    public ResponseEntity<?> delete(@PathVariable Long inspectionId,
-                                    @PathVariable Long attachmentId) {
+    public ResponseEntity<?> delete(@PathVariable("inspectionId") Long inspectionId,
+                                    @PathVariable("attachmentId") Long attachmentId) {
         try {
             attachmentService.delete(inspectionId, attachmentId);
             Map<String, Object> ok = new HashMap<>();
