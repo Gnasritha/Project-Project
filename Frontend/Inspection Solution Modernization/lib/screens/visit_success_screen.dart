@@ -17,7 +17,9 @@ class VisitSuccessScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    final visitNumber = context.watch<SessionState>().inspectionNumber ?? '—';
+    // Show the case business key (INS-…) so it matches the value shown under
+    // every step screen throughout the visit.
+    final visitNumber = context.watch<SessionState>().caseDisplayId ?? '—';
 
     return Scaffold(
       backgroundColor: AppTheme.background,

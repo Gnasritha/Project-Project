@@ -116,6 +116,12 @@ class _ViolatorDataSheetState extends State<_ViolatorDataSheet> {
     v.category = _category;
     v.verification = _verification;
     v.dataFilled = true;
+    // A successful verify means the violator is on record — preselect
+    // "Yes, identified" so it shows green on the Violators Info screen
+    // automatically, without the inspector having to tap the chip.
+    if (_verification == VerificationState.verified) {
+      v.identified = true;
+    }
     if (_category == ViolatorCategory.entity) {
       v.nationalFacilityNumber = _facilityNumber.text.trim();
       v.idNumber = null;

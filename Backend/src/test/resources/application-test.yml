@@ -76,7 +76,7 @@ spring:
 
 # ── Server ────────────────────────────────────────────────────────────
 server:
-  port: 8989
+  port: 8980
   servlet:
     context-path: /
 

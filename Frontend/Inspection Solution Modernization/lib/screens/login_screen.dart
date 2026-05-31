@@ -41,20 +41,31 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _onLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
+    final username = _userController.text.trim();
     try {
       final lang = context.read<LocaleService>().locale.languageCode;
       await AuthService.instance.login(
-        username: _userController.text.trim(),
+        username: username,
         password: _passwordController.text,
         language: lang,
       );
       await StorageService.instance
           .setBool(AppConstants.kRememberMe, _rememberMe);
-      // Best-effort: pull /me; non-fatal if backend doesn't expose it yet.
+      // Best-effort: pull /me for the inspector's real name. If the backend
+      // doesn't expose it, fall back to the identity entered at login so the
+      // dashboard header still reflects who signed in (instead of a blank).
       try {
         final me = await AuthService.instance.me();
         if (mounted) context.read<SessionState>().setUser(me);
-      } catch (_) {/* ignore — keep going */}
+      } catch (_) {
+        if (mounted) {
+          context.read<SessionState>().setUser(CurrentUser(
+                id: AppConstants.defaultInspectorId,
+                username: username,
+                fullName: username,
+              ));
+        }
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed(Routes.dashboard);
     } on ApiException catch (e) {
@@ -72,14 +83,18 @@ class _LoginScreenState extends State<LoginScreen> {
     // opens /api/mobile/** so every screen and creation flow still works.
     // Remove this branch the moment a real /api/auth/nafath is added.
     setState(() => _loading = true);
+    // Use the identity entered in the login field so the header shows the
+    // name we logged in with; fall back to a generic demo label when blank.
+    final entered = _userController.text.trim();
+    final displayName = entered.isNotEmpty ? entered : 'Demo Inspector';
     await StorageService.instance.setString(AppConstants.kAuthToken, 'demo-nafath-token');
-    await StorageService.instance.setString(AppConstants.kUserName, 'Demo Inspector');
+    await StorageService.instance.setString(AppConstants.kUserName, displayName);
     if (!mounted) return;
-    context.read<SessionState>().setUser(const CurrentUser(
+    context.read<SessionState>().setUser(CurrentUser(
           id: AppConstants.defaultInspectorId,
-          username: 'demo-inspector',
-          fullName: 'Demo Inspector',
-          fullNameAr: 'مفتش تجريبي',
+          username: entered.isNotEmpty ? entered : 'demo-inspector',
+          fullName: displayName,
+          fullNameAr: entered.isNotEmpty ? entered : 'مفتش تجريبي',
           role: 'Field Inspector (Demo)',
         ));
     setState(() => _loading = false);

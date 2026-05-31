@@ -69,12 +69,12 @@ spring:
   # issuer-uri MUST match the 'iss' claim in tokens minted by this realm,
   # which is {server-url}/realms/{realm}. Both halves are env-driven.
   # Defaults match the realm shipped in keycloak-realms/momthathel-keycloak-realm.json
-  # imported into a local Keycloak container on :8290.
+  # imported into a local Keycloak container on :18080 with base path /auth.
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:${KEYCLOAK_SERVER_URL:http://localhost:8290}/realms/${KEYCLOAK_REALM:momthathel}}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:${KEYCLOAK_SERVER_URL:http://localhost:18080/auth}/realms/${KEYCLOAK_REALM:momthathel}}
  
 # ── Server ────────────────────────────────────────────────────────────
 server:
@@ -108,7 +108,7 @@ momthathel:
 #   KEYCLOAK_REALM=...
 #   KEYCLOAK_CLIENT_ID=...
 keycloak:
-  server-url:    ${KEYCLOAK_SERVER_URL:http://localhost:8290}
+  server-url:    ${KEYCLOAK_SERVER_URL:http://localhost:18080/auth}
   realm:         ${KEYCLOAK_REALM:momthathel}
   required-role: ${KEYCLOAK_REQUIRED_ROLE:INSPECTOR}
   client:
@@ -140,8 +140,11 @@ camunda:
     mode: self-managed
  
     # REST Gateway (Camunda 8.6+ unified gateway REST API) — Zeebe, not this app
-    rest-address: http://localhost:8080
-    grpc-address: http://localhost:26500
+    # Use IPv4 127.0.0.1 (NOT localhost): on Windows+WSL2, localhost resolves to
+    # ::1 first and hits the wslrelay listener, which stalls and 10s-timeouts the
+    # client on startup. 127.0.0.1 routes to Docker Desktop's proxy (the gateway).
+    rest-address: http://127.0.0.1:8080
+    grpc-address: http://127.0.0.1:26500
 
     auth:
       # The lightweight stack's application-h2.yaml sets
