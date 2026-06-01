@@ -74,7 +74,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:${KEYCLOAK_SERVER_URL:http://localhost:18080/auth}/realms/${KEYCLOAK_REALM:momthathel}}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:${KEYCLOAK_SERVER_URL:http://127.0.0.1:18080/auth}/realms/${KEYCLOAK_REALM:momthathel}}
  
 # ── Server ────────────────────────────────────────────────────────────
 server:
@@ -108,7 +108,11 @@ momthathel:
 #   KEYCLOAK_REALM=...
 #   KEYCLOAK_CLIENT_ID=...
 keycloak:
-  server-url:    ${KEYCLOAK_SERVER_URL:http://localhost:18080/auth}
+  # Use IPv4 127.0.0.1 (NOT localhost): on Windows+WSL2, localhost resolves to
+  # ::1 first and hits a wslrelay listener that stalls, hanging the password-grant
+  # call to Keycloak until the mobile client's 30s timeout fires on login. Same
+  # fix as camunda.client.rest-address above. 127.0.0.1 hits Docker's proxy (~0.7s).
+  server-url:    ${KEYCLOAK_SERVER_URL:http://127.0.0.1:18080/auth}
   realm:         ${KEYCLOAK_REALM:momthathel}
   required-role: ${KEYCLOAK_REQUIRED_ROLE:INSPECTOR}
   client:
@@ -135,7 +139,14 @@ camunda:
     # Points at the official Camunda 8.9 lightweight stack
     # (camunda-8.9-official/docker-compose.yaml): a single "orchestration"
     # container exposing gRPC :26500 and REST :8080, no Keycloak.
-    enabled: true
+    #
+    # Off by default: with the 8.9 stack overloaded the job pollers spam
+    # 503 RESOURCE_EXHAUSTED (Zeebe backpressure) / socket timeouts. With the
+    # client off, workers don't poll and the mobile flow still works
+    # (InspectorVisitService falls back to a synthetic process key).
+    # Flip back on via CAMUNDA_CLIENT_ENABLED=true once Zeebe (:8080, :26500)
+    # and Elasticsearch are healthy.
+    enabled: ${CAMUNDA_CLIENT_ENABLED:false}
  
     mode: self-managed
  
